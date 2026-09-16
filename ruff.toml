@@ -1,0 +1,14 @@
+# Lint configuration for this repository's own Python tooling.
+#
+# A repository that is itself a Python project owns this file: seed it from the
+# template, then widen it to cover the project's own source directories.
+target-version = "py39"
+line-length = 100
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[format]
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"

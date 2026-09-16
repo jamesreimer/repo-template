@@ -1,0 +1,24 @@
+{
+  // A narrow hygiene set. Rules MD001, MD018-MD022, MD024-MD025, MD047, and
+  // MD051-MD052 overlap structural, link, or newline checks owned by
+  // scripts/validate.py. Rules MD002-MD009, MD013-MD017, MD026, MD029-MD036,
+  // MD040-MD041, MD043-MD046, MD048-MD050, MD054, and MD057-MD060 impose
+  // cosmetic choices or conflict with deliberate repository conventions.
+  "config": {
+    "default": false,
+    "MD010": true,
+    "MD011": true,
+    "MD012": true,
+    "MD023": true,
+    "MD027": true,
+    "MD028": true,
+    "MD037": true,
+    "MD038": true,
+    "MD039": true,
+    "MD042": true,
+    "MD053": true,
+    "MD055": true,
+    "MD056": true
+  },
+  "globs": ["**/*.md", "!.git/**"]
+}
