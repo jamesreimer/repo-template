@@ -314,6 +314,8 @@ REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*(\S+)")
 # Shortcut references ([text] alone) are deliberately not matched, because
 # ordinary bracketed prose is indistinguishable from them.
 REFERENCE_USAGE_RE = re.compile(r"\[([^\]\n]+)\]\[([^\]\n]*)\]")
+# A definition line whose destination is missing entirely.
+MALFORMED_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*$")
 INLINE_CODE_RE = re.compile(r"`+[^`]*`+")
 EMPHASIS_RE = re.compile(r"[*_~]+")
 MARKDOWN_LINK_TEXT_RE = re.compile(r"\[([^\]]*)\]\([^()]*\)")
@@ -350,18 +352,22 @@ def parse_markdown(content: str):
     anchors = set()
     counts = Counter()
     destinations = []
-    defined_labels = set()
+    defined_labels = {}
     usages = []
     headings = []
+    definition_problems = []
     fence = None
+    fence_line = 0
     for number, raw_line in enumerate(content.splitlines(), start=1):
         fence_match = FENCE_RE.match(raw_line)
         if fence_match:
             marker = fence_match.group(1)[0]
             if fence is None:
                 fence = marker
+                fence_line = number
             elif fence == marker:
                 fence = None
+                fence_line = 0
             continue
         if fence is not None:
             continue
@@ -380,15 +386,34 @@ def parse_markdown(content: str):
             destinations.append((number, match.group(1)))
         definition = REFERENCE_DEFINITION_RE.match(line)
         if definition:
-            defined_labels.add(normalize_reference_label(definition.group(1)))
+            label = definition.group(1)
+            normalized = normalize_reference_label(label)
+            if normalized in defined_labels:
+                definition_problems.append(
+                    (number, f"duplicate reference-style link definition {label!r}")
+                )
+            else:
+                defined_labels[normalized] = number
             destinations.append((number, definition.group(2)))
+            continue
+
+        malformed = MALFORMED_DEFINITION_RE.match(line)
+        if malformed:
+            definition_problems.append(
+                (
+                    number,
+                    f"reference-style link definition {malformed.group(1)!r} has no destination",
+                )
+            )
             continue
 
         for match in REFERENCE_USAGE_RE.finditer(line):
             # A collapsed reference, [text][], takes its label from the text.
             label = match.group(2) or match.group(1)
             usages.append((number, label))
-    return anchors, destinations, defined_labels, usages, headings
+    if fence is not None:
+        definition_problems.append((fence_line, "fenced code block is not closed"))
+    return anchors, destinations, defined_labels, usages, headings, definition_problems
 
 
 def strip_inline_code(line: str) -> str:
@@ -670,7 +695,7 @@ class RepositoryValidator:
         self._check_reference_labels()
 
         present = set(self.files)
-        for relative_path, (_, destinations, _, _, _) in sorted(self.markdown.items()):
+        for relative_path, (_, destinations, _, _, _, _) in sorted(self.markdown.items()):
             directory = relative_path.rsplit("/", 1)[0] if "/" in relative_path else ""
             for line, raw_destination in destinations:
                 destination = parse_destination(raw_destination)
@@ -712,8 +737,11 @@ class RepositoryValidator:
                 )
 
     def _check_reference_labels(self) -> None:
-        """Report reference-style links and images with no matching definition."""
-        for relative_path, (_, _, defined_labels, usages, _) in sorted(self.markdown.items()):
+        """Report unresolved usages, and definitions that cannot be relied on."""
+        for relative_path, parsed in sorted(self.markdown.items()):
+            _, _, defined_labels, usages, _, definition_problems = parsed
+            for line, reason in definition_problems:
+                self._add(relative_path, reason, "markdown-links", line)
             for line, label in usages:
                 if normalize_reference_label(label) not in defined_labels:
                     self._add(
@@ -750,7 +778,28 @@ class RepositoryValidator:
             if not matches_any(relative_path, globs):
                 continue
             parsed = self.markdown.get(relative_path)
-            headings = parsed[4] if parsed is not None else parse_markdown(content)[4]
+            headings = (parsed or parse_markdown(content))[4]
+            if not headings:
+                continue
+
+            first_line, first_level = headings[0]
+            if first_level != 1:
+                self._add(
+                    relative_path,
+                    f"first heading must be H1, found H{first_level}",
+                    "markdown-headings",
+                    first_line,
+                )
+
+            top_level_headings = [line for line, level in headings if level == 1]
+            if len(top_level_headings) != 1:
+                self._add(
+                    relative_path,
+                    f"document must contain exactly one H1; found {len(top_level_headings)}",
+                    "markdown-headings",
+                    top_level_headings[1] if len(top_level_headings) > 1 else 0,
+                )
+
             previous = None
             for line, level in headings:
                 if previous is not None and level > previous + 1:
@@ -801,6 +850,10 @@ class RepositoryValidator:
         scripts_directory = str(module_path.parent)
         if scripts_directory not in sys.path:
             sys.path.insert(0, scripts_directory)
+        # Register before executing: dataclasses and typing resolve string
+        # annotations by looking the defining module up in sys.modules, so a
+        # local module using postponed annotations fails without this.
+        sys.modules[spec.name] = module
         try:
             spec.loader.exec_module(module)
             extra_checks = getattr(module, "extra_checks", None)
@@ -813,6 +866,8 @@ class RepositoryValidator:
                 return
             results = list(extra_checks(context))
         except Exception as error:  # noqa: BLE001 - a local check must not abort the run
+            # A module that failed to execute must not stay importable.
+            sys.modules.pop(spec.name, None)
             self._add(
                 LOCAL_CHECK_PATH, f"local checks raised {type(error).__name__}: {error}", "local"
             )

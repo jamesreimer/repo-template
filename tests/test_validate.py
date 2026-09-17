@@ -503,8 +503,24 @@ class HeadingHierarchyTests(RepositoryTestCase):
         root = self.build({"README.md": "# Title\n\n## Two\n\n### Three\n\n## Back\n"})
         self.assertEqual([], self.reasons(root))
 
-    def test_first_heading_may_be_any_level(self):
-        root = self.build({"README.md": "### Starts Deep\n\n#### Then One More\n"})
+    def test_first_heading_must_be_h1(self):
+        root = self.build({"README.md": "## Starts At Two\n\n### Then Three\n"})
+        self.assertIn("first heading must be H1, found H2", self.reasons(root))
+
+    def test_document_must_contain_exactly_one_h1(self):
+        root = self.build({"README.md": "# One\n\n# Two\n"})
+        self.assertIn("document must contain exactly one H1; found 2", self.reasons(root))
+
+    def test_document_with_no_h1_fails(self):
+        root = self.build({"README.md": "## A\n\n### B\n"})
+        self.assertIn("document must contain exactly one H1; found 0", self.reasons(root))
+
+    def test_document_without_headings_is_not_reported(self):
+        root = self.build({"README.md": "Just prose, no headings.\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_fenced_h1_does_not_count(self):
+        root = self.build({"README.md": "# Real\n\n```\n# Fenced\n```\n"})
         self.assertEqual([], self.reasons(root))
 
     def test_fenced_heading_is_not_a_heading(self):
@@ -531,6 +547,56 @@ class HeadingHierarchyTests(RepositoryTestCase):
             config={"markdown-links": {"enabled": False}},
         )
         self.assertIn("heading level skips from H1 to H4", self.reasons(root))
+
+
+class FenceIntegrityTests(RepositoryTestCase):
+    def test_unclosed_fence_fails(self):
+        root = self.build({"README.md": "# Title\n\n```\nunclosed\n"})
+        self.assertIn("fenced code block is not closed", self.reasons(root))
+
+    def test_unclosed_fence_reports_the_opening_line(self):
+        root = self.build({"README.md": "# Title\n\n```\nunclosed\n"})
+        findings = [f for f in validate_repository(root) if "not closed" in f.reason]
+        self.assertEqual(3, findings[0].line)
+
+    def test_closed_fence_passes(self):
+        root = self.build({"README.md": "# Title\n\n```\nclosed\n```\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_tilde_fence_is_not_closed_by_backticks(self):
+        root = self.build({"README.md": "# Title\n\n~~~\ntext\n```\n"})
+        self.assertIn("fenced code block is not closed", self.reasons(root))
+
+
+class ReferenceDefinitionIntegrityTests(RepositoryTestCase):
+    def test_duplicate_definition_fails(self):
+        root = self.build({"README.md": "# Title\n\n[a]: README.md\n[a]: README.md\n"})
+        self.assertIn("duplicate reference-style link definition 'a'", self.reasons(root))
+
+    def test_duplicate_detection_uses_label_normalization(self):
+        root = self.build(
+            {"README.md": "# Title\n\n[See Also]: README.md\n[see   also]: README.md\n"}
+        )
+        self.assertTrue(
+            any("duplicate reference-style link definition" in r for r in self.reasons(root))
+        )
+
+    def test_malformed_definition_without_destination_fails(self):
+        root = self.build({"README.md": "# Title\n\n[a]:\n"})
+        self.assertIn("reference-style link definition 'a' has no destination", self.reasons(root))
+
+    def test_distinct_definitions_pass(self):
+        root = self.build(
+            {
+                "README.md": "# Title\n\n[a]: README.md\n[b]: guide.md\n",
+                "guide.md": "# Guide\n",
+            }
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_fenced_definitions_are_not_checked(self):
+        root = self.build({"README.md": "# Title\n\n```\n[a]: x\n[a]: y\n[b]:\n```\n"})
+        self.assertEqual([], self.reasons(root))
 
 
 class StructureSnapshotTests(RepositoryTestCase):
@@ -618,6 +684,38 @@ class LocalCheckTests(RepositoryTestCase):
         )
         root = self.build({"README.md": "# Title\n", "scripts/validate_local.py": module})
         self.assertIn("seen", self.reasons(root))
+
+
+class LocalCheckLoaderTests(RepositoryTestCase):
+    def test_local_module_may_use_dataclasses_with_postponed_annotations(self):
+        root = self.build({"README.md": "# Title\n"})
+        (root / "scripts").mkdir(exist_ok=True)
+        (root / "scripts" / "validate_local.py").write_text(
+            "from __future__ import annotations\n\n"
+            "from dataclasses import dataclass\n\n\n"
+            "@dataclass(frozen=True)\n"
+            "class Note:\n"
+            "    line: int\n"
+            "    reason: str\n\n\n"
+            "def extra_checks(context):\n"
+            "    note = Note(1, 'local check ran')\n"
+            "    return [('README.md', note.line, note.reason)]\n",
+            encoding="utf-8",
+        )
+        self.assertIn("local check ran", self.reasons(root))
+
+    def test_failed_local_module_is_not_left_importable(self):
+        import sys as _sys
+
+        root = self.build({"README.md": "# Title\n"})
+        (root / "scripts").mkdir(exist_ok=True)
+        (root / "scripts" / "validate_local.py").write_text(
+            "raise RuntimeError('boom')\n", encoding="utf-8"
+        )
+        _sys.modules.pop("validate_local", None)
+        reasons = self.reasons(root)
+        self.assertTrue(any("boom" in reason for reason in reasons))
+        self.assertNotIn("validate_local", _sys.modules)
 
 
 class EnumerationTests(RepositoryTestCase):
