@@ -118,8 +118,9 @@ defect in this template and should be fixed here.
 ## Scope of automated validation
 
 Validation checks mechanical invariants: encoding, newlines, junk artifacts,
-required files, internal link resolution, credential-shaped filenames, committed
-symbolic links, and optionally path naming and the structure snapshot.
+required files, internal link resolution including reference-style labels,
+credential-shaped filenames, committed symbolic links, and optionally path naming
+and the structure snapshot.
 
 It deliberately does not check scope, boundaries, proportionality, or prose
 quality. Those remain human and AI review responsibilities.

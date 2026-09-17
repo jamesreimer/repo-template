@@ -275,6 +275,81 @@ class MarkdownLinkTests(RepositoryTestCase):
         self.assertEqual(self.reasons(root), [])
 
 
+class ReferenceLabelTests(RepositoryTestCase):
+    def test_undefined_reference_label_fails(self):
+        root = self.build({"README.md": "# Title\n\nSee [the guide][missing].\n"})
+        self.assertIn(
+            "reference-style link label 'missing' has no matching definition",
+            self.reasons(root),
+        )
+
+    def test_defined_reference_label_passes(self):
+        root = self.build(
+            {
+                "README.md": "# Title\n\nSee [the guide][ok].\n\n[ok]: guide.md\n",
+                "guide.md": "# Guide\n",
+            }
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_collapsed_reference_takes_label_from_text(self):
+        root = self.build(
+            {"README.md": "# Title\n\nSee [guide][].\n\n[guide]: guide.md\n", "guide.md": "# G\n"}
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_collapsed_reference_without_definition_fails(self):
+        root = self.build({"README.md": "# Title\n\nSee [guide][].\n"})
+        self.assertIn(
+            "reference-style link label 'guide' has no matching definition",
+            self.reasons(root),
+        )
+
+    def test_label_matching_ignores_case_and_collapses_whitespace(self):
+        root = self.build(
+            {
+                "README.md": "# Title\n\nSee [x][See   Also].\n\n[see also]: guide.md\n",
+                "guide.md": "# G\n",
+            }
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_reference_image_label_is_checked(self):
+        root = self.build({"README.md": "# Title\n\n![diagram][absent]\n"})
+        self.assertIn(
+            "reference-style link label 'absent' has no matching definition",
+            self.reasons(root),
+        )
+
+    def test_fenced_reference_usage_is_not_checked(self):
+        root = self.build({"README.md": "# Title\n\n```\n[text][nope]\n```\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_fenced_definition_does_not_satisfy_a_real_usage(self):
+        root = self.build({"README.md": "# Title\n\nSee [x][ok].\n\n```\n[ok]: guide.md\n```\n"})
+        self.assertIn(
+            "reference-style link label 'ok' has no matching definition", self.reasons(root)
+        )
+
+    def test_inline_code_reference_is_not_checked(self):
+        root = self.build({"README.md": "# Title\n\nWrite `[text][label]` for a reference.\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_inline_link_is_not_treated_as_a_reference(self):
+        root = self.build(
+            {"README.md": "# Title\n\nSee [the guide](guide.md).\n", "guide.md": "# G\n"}
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_shortcut_reference_prose_is_not_flagged(self):
+        root = self.build({"README.md": "# Title\n\nAn array like [value] is ordinary prose.\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_definition_destination_is_still_resolved(self):
+        root = self.build({"README.md": "# Title\n\nSee [x][ok].\n\n[ok]: missing.md\n"})
+        self.assertIn("link destination 'missing.md' does not exist", self.reasons(root))
+
+
 class StructureSnapshotTests(RepositoryTestCase):
     def test_reports_stale_snapshot(self):
         root = self.build(

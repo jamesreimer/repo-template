@@ -304,11 +304,24 @@ def render_repository_structure(relative_paths) -> str:
 FENCE_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
 HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 INLINE_LINK_RE = re.compile(r"\]\(([^()]*)\)")
-REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[[^\]]+\]:[ \t]*(\S+)")
+REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*(\S+)")
+# Full and collapsed reference links and images: [text][label] and [text][].
+# Shortcut references ([text] alone) are deliberately not matched, because
+# ordinary bracketed prose is indistinguishable from them.
+REFERENCE_USAGE_RE = re.compile(r"\[([^\]\n]+)\]\[([^\]\n]*)\]")
 INLINE_CODE_RE = re.compile(r"`+[^`]*`+")
 EMPHASIS_RE = re.compile(r"[*_~]+")
 MARKDOWN_LINK_TEXT_RE = re.compile(r"\[([^\]]*)\]\([^()]*\)")
 SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def normalize_reference_label(label: str) -> str:
+    """Normalize a link label the way CommonMark matches them.
+
+    Labels match case-insensitively with internal whitespace collapsed, so
+    ``[See Also]`` and ``[see   also]`` refer to the same definition.
+    """
+    return " ".join(label.split()).casefold()
 
 
 def heading_slug(text: str) -> str:
@@ -324,10 +337,16 @@ def heading_slug(text: str) -> str:
 
 
 def parse_markdown(content: str):
-    """Return heading anchors and link destinations outside fenced code."""
+    """Return anchors, destinations, defined labels, and label usages.
+
+    Everything inside fenced code is ignored, so examples in documentation do
+    not register as real links, definitions, or usages.
+    """
     anchors = set()
     counts = Counter()
     destinations = []
+    defined_labels = set()
+    usages = []
     fence = None
     for number, raw_line in enumerate(content.splitlines(), start=1):
         fence_match = FENCE_RE.match(raw_line)
@@ -354,8 +373,15 @@ def parse_markdown(content: str):
             destinations.append((number, match.group(1)))
         definition = REFERENCE_DEFINITION_RE.match(line)
         if definition:
-            destinations.append((number, definition.group(1)))
-    return anchors, destinations
+            defined_labels.add(normalize_reference_label(definition.group(1)))
+            destinations.append((number, definition.group(2)))
+            continue
+
+        for match in REFERENCE_USAGE_RE.finditer(line):
+            # A collapsed reference, [text][], takes its label from the text.
+            label = match.group(2) or match.group(1)
+            usages.append((number, label))
+    return anchors, destinations, defined_labels, usages
 
 
 def strip_inline_code(line: str) -> str:
@@ -577,8 +603,10 @@ class RepositoryValidator:
             if matches_any(relative_path, globs):
                 self.markdown[relative_path] = parse_markdown(content)
 
+        self._check_reference_labels()
+
         present = set(self.files)
-        for relative_path, (_, destinations) in sorted(self.markdown.items()):
+        for relative_path, (_, destinations, _, _) in sorted(self.markdown.items()):
             directory = relative_path.rsplit("/", 1)[0] if "/" in relative_path else ""
             for line, raw_destination in destinations:
                 destination = parse_destination(raw_destination)
@@ -618,6 +646,18 @@ class RepositoryValidator:
                     "markdown-links",
                     line,
                 )
+
+    def _check_reference_labels(self) -> None:
+        """Report reference-style links and images with no matching definition."""
+        for relative_path, (_, _, defined_labels, usages) in sorted(self.markdown.items()):
+            for line, label in usages:
+                if normalize_reference_label(label) not in defined_labels:
+                    self._add(
+                        relative_path,
+                        f"reference-style link label {label!r} has no matching definition",
+                        "markdown-links",
+                        line,
+                    )
 
     def _verify_anchor(self, source: str, target: str, fragment: str, line: int) -> None:
         parsed = self.markdown.get(target)
