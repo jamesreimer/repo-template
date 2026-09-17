@@ -350,6 +350,49 @@ class ReferenceLabelTests(RepositoryTestCase):
         self.assertIn("link destination 'missing.md' does not exist", self.reasons(root))
 
 
+class HeadingHierarchyTests(RepositoryTestCase):
+    def test_skipped_heading_level_fails(self):
+        root = self.build({"README.md": "# Title\n\n#### Deep\n"})
+        self.assertIn("heading level skips from H1 to H4", self.reasons(root))
+
+    def test_incrementing_headings_pass(self):
+        root = self.build({"README.md": "# Title\n\n## Two\n\n### Three\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_decreasing_heading_levels_pass(self):
+        root = self.build({"README.md": "# Title\n\n## Two\n\n### Three\n\n## Back\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_first_heading_may_be_any_level(self):
+        root = self.build({"README.md": "### Starts Deep\n\n#### Then One More\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_fenced_heading_is_not_a_heading(self):
+        root = self.build({"README.md": "# Title\n\n```\n#### Not a heading\n```\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_skip_is_reported_with_its_line_number(self):
+        root = self.build({"README.md": "# Title\n\n#### Deep\n"})
+        findings = validate_repository(root)
+        skips = [f for f in findings if f.check == "markdown-headings"]
+        self.assertEqual(1, len(skips))
+        self.assertEqual(3, skips[0].line)
+
+    def test_check_can_be_disabled(self):
+        root = self.build(
+            {"README.md": "# Title\n\n#### Deep\n"},
+            config={"markdown-headings": {"enabled": False}},
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_headings_are_checked_when_link_checking_is_disabled(self):
+        root = self.build(
+            {"README.md": "# Title\n\n#### Deep\n"},
+            config={"markdown-links": {"enabled": False}},
+        )
+        self.assertIn("heading level skips from H1 to H4", self.reasons(root))
+
+
 class StructureSnapshotTests(RepositoryTestCase):
     def test_reports_stale_snapshot(self):
         root = self.build(

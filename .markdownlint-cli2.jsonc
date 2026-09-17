@@ -1,14 +1,31 @@
 {
-  // A narrow hygiene set. Rules MD001, MD018-MD022, MD024-MD025, MD047, and
-  // MD051-MD052 overlap structural, link, or newline checks owned by
-  // scripts/validate.py. Rules MD002-MD009, MD013-MD017, MD026, MD029-MD036,
-  // MD040-MD041, MD043-MD046, MD048-MD050, MD054, and MD057-MD060 impose
-  // cosmetic choices or conflict with deliberate repository conventions.
+  // A narrow hygiene set.
+  //
+  // Disabled because scripts/validate.py implements the check itself, so
+  // enabling the rule would report the same defect twice: MD001 (heading
+  // hierarchy), MD047 (final newline), MD051 (link fragments), and MD052
+  // (reference labels). Each of these is genuinely covered there; do not
+  // disable a rule here on the assumption that the validator owns it without
+  // confirming that it does.
+  //
+  // Disabled deliberately rather than for coverage: MD024 and MD025. Duplicate
+  // headings and multiple top-level headings are legal Markdown, and the
+  // validator models GitHub's suffixed-anchor behavior for them rather than
+  // rejecting them.
+  //
+  // Disabled as cosmetic or conflicting with repository conventions:
+  // MD002-MD009, MD013-MD017, MD026, MD029-MD036, MD040-MD041, MD043-MD046,
+  // MD048-MD050, MD054, and MD057-MD060.
   "config": {
     "default": false,
     "MD010": true,
     "MD011": true,
     "MD012": true,
+    "MD018": true,
+    "MD019": true,
+    "MD020": true,
+    "MD021": true,
+    "MD022": true,
     "MD023": true,
     "MD027": true,
     "MD028": true,
