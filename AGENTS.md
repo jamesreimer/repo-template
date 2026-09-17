@@ -25,7 +25,7 @@ Reasoning Standard, which is domain-neutral and governs how work is reasoned
 about rather than any particular subject. It is a good candidate for
 repositories that do not already govern architectural reasoning:
 
-<https://github.com/jamesreimer/standards-templates/blob/bf4932d7fd93ea277e980ac49d35b1ab9535b955/templates/architectural-reasoning/standard.md>
+<https://github.com/jamesreimer/standards-templates/blob/8eafbc58279d265908d75ae784c8df1927063c12/templates/architectural-reasoning/standard.md>
 
 Adopting it is a deliberate decision belonging to the consuming repository or
 its organization, made through whatever adoption process that organization
