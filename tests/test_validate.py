@@ -187,6 +187,54 @@ class PathNameTests(RepositoryTestCase):
         self.assertEqual(self.reasons(root), [])
 
 
+class SymlinkTests(RepositoryTestCase):
+    def test_committed_symlink_is_rejected(self):
+        root = self.build({"README.md": "# Title\n", "notes.md": "# Notes\n"})
+        (root / "link.md").symlink_to(root / "notes.md")
+        self.assertIn(
+            "symbolic link must not be committed; the link target was not read",
+            self.reasons(root),
+        )
+
+    def test_symlink_to_target_outside_repository_is_rejected(self):
+        root = self.build({"README.md": "# Title\n"})
+        (root / "escape.md").symlink_to(Path("/etc/passwd"))
+        reasons = self.reasons(root)
+        self.assertIn("symbolic link must not be committed; the link target was not read", reasons)
+        # The target must never be read, so no encoding or newline finding can
+        # be raised about the content on the other side of the link.
+        self.assertNotIn("file is not valid UTF-8", " ".join(reasons))
+        self.assertNotIn("text file must end with a newline", reasons)
+
+    def test_broken_symlink_is_rejected_without_resolution_error(self):
+        root = self.build({"README.md": "# Title\n"})
+        (root / "dangling.md").symlink_to(root / "does-not-exist.md")
+        self.assertIn(
+            "symbolic link must not be committed; the link target was not read",
+            self.reasons(root),
+        )
+
+    def test_symlinked_directory_is_rejected(self):
+        root = self.build({"README.md": "# Title\n", "real/page.md": "# Page\n"})
+        (root / "alias").symlink_to(root / "real", target_is_directory=True)
+        self.assertIn(
+            "symbolic link must not be committed; the link target was not read",
+            self.reasons(root),
+        )
+
+    def test_symlink_check_is_unconditional(self):
+        root = self.build(
+            {"README.md": "# Title\n"},
+            config={"junk-artifacts": {"enabled": False}, "text-encoding": {"enabled": False}},
+        )
+        (root / "link.md").symlink_to(root / "README.md")
+        self.assertIn("symlinks", self.checks(root))
+
+    def test_ordinary_files_produce_no_symlink_finding(self):
+        root = self.build({"README.md": "# Title\n", "docs/page.md": "# Page\n"})
+        self.assertNotIn("symlinks", self.checks(root))
+
+
 class MarkdownLinkTests(RepositoryTestCase):
     def test_reports_missing_target(self):
         root = self.build({"README.md": "# Title\n\n[gone](docs/missing.md)\n"})
