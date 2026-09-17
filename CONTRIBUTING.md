@@ -134,7 +134,8 @@ be used as comments.
 
 Checks that only make sense for one repository belong in
 `scripts/validate_local.py`, which is optional and loaded automatically when
-present:
+present. It is imported as an ordinary module, so `dataclasses`, `typing`, and
+`from __future__ import annotations` all work as usual:
 
 ```python
 from validate import markdown_without_fenced_code
@@ -155,9 +156,10 @@ defect in this template and should be fixed here.
 ## Scope of automated validation
 
 Validation checks mechanical invariants: encoding, newlines, junk artifacts,
-required files, internal link resolution including reference-style labels, heading
-hierarchy, credential-shaped filenames, committed symbolic links, and optionally
-path naming and the structure snapshot.
+required files, internal link resolution including reference-style label and
+definition integrity, fenced code block balance, heading hierarchy including a
+single leading H1, credential-shaped filenames, committed symbolic links, and
+optionally path naming and the structure snapshot.
 
 It deliberately does not check scope, boundaries, proportionality, or prose
 quality. Those remain human and AI review responsibilities.
