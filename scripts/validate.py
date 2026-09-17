@@ -196,9 +196,13 @@ def matches_any(relative_path: str, patterns) -> bool:
     return any(glob_to_regex(pattern).match(relative_path) for pattern in patterns)
 
 
-# Options whose list entries are objects rather than strings. Their contents
-# are validated where the check reads them.
-OBJECT_LIST_OPTIONS = {("path-names", "rules")}
+# Options whose list entries are objects rather than strings, mapped to the
+# expected type of each known key. Entry shape and unknown keys are reported
+# where the check reads them; value types are checked here, so a malformed
+# value raises ConfigError instead of a raw TypeError at match time.
+OBJECT_LIST_OPTIONS = {
+    ("path-names", "rules"): {"pattern": str, "scope": list, "exempt": list},
+}
 
 
 def describe_type(value) -> str:
@@ -240,13 +244,42 @@ def check_option_type(name: str, key: str, value, default) -> None:
             f"{expected}; found {actual}"
         )
 
-    if isinstance(default, list) and (name, key) not in OBJECT_LIST_OPTIONS:
+    if not isinstance(default, list):
+        return
+
+    entry_types = OBJECT_LIST_OPTIONS.get((name, key))
+    if entry_types is None:
         for entry in value:
             if not isinstance(entry, str):
                 raise ConfigError(
                     f"{CONFIG_PATH} check {name!r} option {key!r} must contain only strings; "
                     f"found {describe_type(entry)}"
                 )
+        return
+
+    for index, entry in enumerate(value):
+        if not isinstance(entry, dict):
+            continue  # shape is reported where the check reads it
+        for entry_key, entry_value in entry.items():
+            if entry_key.startswith("_"):
+                continue
+            expected_type = entry_types.get(entry_key)
+            if expected_type is None:
+                continue  # unknown keys are reported where the check reads them
+            if not isinstance(entry_value, expected_type):
+                wanted = "an array" if expected_type is list else "a string"
+                raise ConfigError(
+                    f"{CONFIG_PATH} check {name!r} {key} entry {index} option "
+                    f"{entry_key!r} must be {wanted}; found {describe_type(entry_value)}"
+                )
+            if expected_type is list:
+                for item in entry_value:
+                    if not isinstance(item, str):
+                        raise ConfigError(
+                            f"{CONFIG_PATH} check {name!r} {key} entry {index} option "
+                            f"{entry_key!r} must contain only strings; "
+                            f"found {describe_type(item)}"
+                        )
 
 
 def load_config(root: Path) -> dict:
@@ -368,6 +401,12 @@ SETEXT_RE = re.compile(r"^[ \t]{0,3}(=+|-+)[ \t]*$")
 # YAML front matter delimiters, so a closing "---" is not read as a setext
 # underline for the last metadata line.
 FRONT_MATTER_RE = re.compile(r"^(-{3}|\.{3})[ \t]*$")
+# The first line inside front matter: a YAML key or a comment. Prose and
+# blank lines do not match, which is what keeps a leading thematic break
+# from being read as front matter.
+YAML_ENTRY_RE = re.compile(r"^(?:#|[A-Za-z_][A-Za-z0-9_.-]*[ \t]*:)")
+# A line that opens or continues an HTML block cannot be Setext heading text.
+HTML_BLOCK_RE = re.compile(r"^[ \t]{0,3}<")
 HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 INLINE_LINK_RE = re.compile(r"\]\(([^()]*)\)")
 REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*(\S+)")
@@ -409,10 +448,20 @@ def is_closing_fence(line: str, character: str, minimum_length: int) -> bool:
 def front_matter_end(lines) -> int:
     """Return the last line number of YAML front matter, or 0 when absent.
 
-    Front matter only exists when the very first line is a delimiter and a
-    closing delimiter follows. An unterminated one is ordinary content.
+    This is deliberately conservative, because guessing wrong in the permissive
+    direction silently disables every Markdown check over the skipped span. A
+    document opening with a thematic break must not be mistaken for front
+    matter and have its body ignored.
+
+    Front matter is recognized only when the first line is a delimiter, the
+    line after it is non-blank and reads as a YAML key or comment, and a
+    closing delimiter follows. A thematic break is effectively always followed
+    by a blank line, and ordinary prose does not look like a YAML key, so both
+    fall outside. Anything unterminated is ordinary content.
     """
-    if not lines or not FRONT_MATTER_RE.match(lines[0]):
+    if len(lines) < 2 or not FRONT_MATTER_RE.match(lines[0]):
+        return 0
+    if not YAML_ENTRY_RE.match(lines[1]):
         return 0
     for index in range(1, len(lines)):
         if FRONT_MATTER_RE.match(lines[index]):
@@ -470,6 +519,9 @@ def parse_markdown(content: str):
     metadata_end = front_matter_end(source_lines)
     # Text of the previous line when it could be a setext heading, else None.
     setext_candidate = None
+    # An HTML block runs until a blank line. Its last line is not paragraph
+    # text, so a following "---" belongs to the block rather than heading it.
+    in_html_block = False
 
     for number, raw_line in enumerate(source_lines, start=1):
         if number <= metadata_end:
@@ -495,11 +547,16 @@ def parse_markdown(content: str):
             setext_candidate = None
             continue
 
+        if not raw_line.strip():
+            in_html_block = False
+        elif not in_html_block and HTML_BLOCK_RE.match(raw_line):
+            in_html_block = True
+
         heading_match = HEADING_RE.match(raw_line)
         if heading_match:
             record_heading(number, len(heading_match.group(1)), heading_match.group(2))
             setext_candidate = None
-        elif raw_line.strip():
+        elif raw_line.strip() and not in_html_block:
             setext_candidate = raw_line.strip()
         else:
             setext_candidate = None

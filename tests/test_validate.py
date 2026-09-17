@@ -595,6 +595,41 @@ class SetextHeadingTests(RepositoryTestCase):
         self.assertEqual([], self.reasons(root))
 
 
+class HtmlBlockSetextTests(RepositoryTestCase):
+    """A line closing an HTML block is not Setext heading text.
+
+    An HTML block runs until a blank line, so a "---" directly after one
+    belongs to the block rather than underlining its last line.
+    """
+
+    def test_html_block_followed_by_rule_is_not_a_heading(self):
+        root = self.build(
+            {
+                "README.md": '<div align="center">\n  <img src="logo.png">\n</div>\n'
+                "---\n\n# Project\n"
+            }
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_html_comment_followed_by_rule_is_not_a_heading(self):
+        root = self.build({"README.md": "<!-- markdownlint-disable -->\n---\n\n# Project\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_plain_line_inside_an_html_block_is_not_heading_text(self):
+        root = self.build({"README.md": "<div>\nplain text\n---\n\n# Project\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_html_block_ends_at_a_blank_line(self):
+        # After the blank line the paragraph is ordinary text again, so the
+        # underline below it really is a Setext heading.
+        root = self.build({"README.md": "<div></div>\n\nTitle\n=====\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_spurious_heading_does_not_mask_a_real_level_skip(self):
+        root = self.build({"README.md": "# Title\n\n<!-- x -->\n---\n\n### Deep\n"})
+        self.assertIn("heading level skips from H1 to H3", self.reasons(root))
+
+
 class FrontMatterTests(RepositoryTestCase):
     def test_front_matter_closing_delimiter_is_not_a_setext_heading(self):
         root = self.build(
@@ -605,6 +640,24 @@ class FrontMatterTests(RepositoryTestCase):
     def test_front_matter_does_not_hide_a_real_heading_problem(self):
         root = self.build({"README.md": "---\ntitle: Example\n---\n\n## Starts At Two\n"})
         self.assertIn("first heading must be H1, found H2", self.reasons(root))
+
+    def test_leading_thematic_break_does_not_suppress_anchor_checking(self):
+        root = self.build({"README.md": "---\n\n# Title\n\nSee [x](#nope).\n"})
+        self.assertIn(
+            "link anchor '#nope' does not match a heading in README.md", self.reasons(root)
+        )
+
+    def test_leading_thematic_break_does_not_suppress_heading_checking(self):
+        root = self.build({"README.md": "---\n\n## Starts At Two\n"})
+        self.assertIn("first heading must be H1, found H2", self.reasons(root))
+
+    def test_leading_thematic_break_does_not_suppress_fence_checking(self):
+        root = self.build({"README.md": "---\n\n# Title\n\n```\nunclosed\n"})
+        self.assertIn("fenced code block is not closed", self.reasons(root))
+
+    def test_front_matter_opening_with_a_yaml_comment_is_recognized(self):
+        root = self.build({"README.md": "---\n# a yaml comment\ntitle: x\n---\n\n# Real\n"})
+        self.assertEqual([], self.reasons(root))
 
     def test_unterminated_front_matter_is_ordinary_content(self):
         # Without a closing delimiter this is not front matter, so the second
@@ -791,6 +844,41 @@ class ConfigTypeTests(RepositoryTestCase):
                 "path-names": {
                     "enabled": True,
                     "rules": [{"pattern": "^[a-z.]+$", "scope": ["**"]}],
+                }
+            },
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_rule_scope_must_be_an_array(self):
+        root = self.build(
+            {"README.md": "# T\n"},
+            config={"path-names": {"enabled": True, "rules": [{"pattern": "^x$", "scope": 5}]}},
+        )
+        self.assertIn("rules entry 0 option 'scope' must be an array", self.reasons(root)[0])
+
+    def test_rule_pattern_must_be_a_string(self):
+        root = self.build(
+            {"README.md": "# T\n"},
+            config={"path-names": {"enabled": True, "rules": [{"pattern": 7}]}},
+        )
+        self.assertIn("rules entry 0 option 'pattern' must be a string", self.reasons(root)[0])
+
+    def test_rule_scope_entries_must_be_strings(self):
+        root = self.build(
+            {"README.md": "# T\n"},
+            config={
+                "path-names": {"enabled": True, "rules": [{"pattern": "^x$", "scope": ["**", 3]}]}
+            },
+        )
+        self.assertIn("must contain only strings", self.reasons(root)[0])
+
+    def test_rule_comment_keys_are_still_allowed(self):
+        root = self.build(
+            {"readme.md": "# T\n"},
+            config={
+                "path-names": {
+                    "enabled": True,
+                    "rules": [{"_": "why", "pattern": "^[a-z.]+$", "scope": ["**"]}],
                 }
             },
         )
