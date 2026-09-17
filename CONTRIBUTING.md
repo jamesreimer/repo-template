@@ -57,6 +57,22 @@ regenerate the structure snapshot before validating:
 python3 scripts/update_repository_structure.py
 ```
 
+## Updating pinned tool versions
+
+Actions in `.github/workflows/validate.yml` are pinned by commit SHA, and
+Dependabot updates those references monthly.
+
+It does not update the tool versions passed to them. `ruff-action` and the
+`actionlint` action take a `version:` input naming the tool to run, and those
+strings are invisible to Dependabot's `github-actions` ecosystem. Without
+attention they stay frozen while the actions around them move.
+
+Review them when a Dependabot pull request touches the surrounding action, or
+when a lint failure suggests the pinned version has fallen behind. Bump the
+`version:` input deliberately, in its own change, and confirm the suite still
+passes. No automation is provided, because a tool version that changes without
+review is exactly what pinning exists to prevent.
+
 ## Tooling rule
 
 Repository tooling is Python, standard library only, targeting the version
@@ -83,6 +99,10 @@ comments. An unknown check or option is an error rather than a silent no-op.
 | `structure-snapshot` | **off** | `path` |
 
 Glob options accept `*` within a path segment and `**` across segments.
+
+A trailing `/**` matches what is inside a directory, not the directory itself.
+Scoping `src/**` never examines `src`, so a rule that should cover both needs
+both entries: `["src", "src/**"]`. The same applies to `exempt`.
 
 Committed symbolic links are rejected unconditionally and have no configuration key.
 A symbolic link is mechanically distinct from ordinary repository content and its

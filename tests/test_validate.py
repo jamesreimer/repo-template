@@ -549,6 +549,70 @@ class HeadingHierarchyTests(RepositoryTestCase):
         self.assertIn("heading level skips from H1 to H4", self.reasons(root))
 
 
+class SetextHeadingTests(RepositoryTestCase):
+    """Setext headings are valid CommonMark and must not be rejected.
+
+    Each rule is covered in both directions: valid input produces no finding,
+    invalid input produces the intended one.
+    """
+
+    def test_setext_h1_is_accepted(self):
+        root = self.build({"README.md": "Document Title\n==============\n\nBody.\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_setext_h1_with_atx_subheading_is_accepted(self):
+        root = self.build({"README.md": "Title\n=====\n\n## Section\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_setext_h1_and_setext_h2_are_accepted(self):
+        root = self.build({"README.md": "Title\n=====\n\nSection\n-------\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_setext_heading_produces_an_anchor(self):
+        root = self.build(
+            {"README.md": "Document Title\n==============\n\nSee [top](#document-title).\n"}
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_setext_document_starting_at_h2_still_fails(self):
+        root = self.build({"README.md": "Section\n-------\n\nBody.\n"})
+        self.assertIn("first heading must be H1, found H2", self.reasons(root))
+
+    def test_two_setext_h1s_still_fail(self):
+        root = self.build({"README.md": "One\n===\n\nTwo\n===\n"})
+        self.assertIn("document must contain exactly one H1; found 2", self.reasons(root))
+
+    def test_setext_heading_skip_is_still_reported(self):
+        root = self.build({"README.md": "Title\n=====\n\n#### Deep\n"})
+        self.assertIn("heading level skips from H1 to H4", self.reasons(root))
+
+    def test_thematic_break_after_blank_line_is_not_a_heading(self):
+        root = self.build({"README.md": "# Title\n\nSome text.\n\n---\n\nMore text.\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_setext_underline_inside_a_fence_is_not_a_heading(self):
+        root = self.build({"README.md": "# Title\n\n```\nFake\n====\n```\n"})
+        self.assertEqual([], self.reasons(root))
+
+
+class FrontMatterTests(RepositoryTestCase):
+    def test_front_matter_closing_delimiter_is_not_a_setext_heading(self):
+        root = self.build(
+            {"README.md": "---\ntitle: Example\nauthor: someone\n---\n\n# Real Title\n\nBody.\n"}
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_front_matter_does_not_hide_a_real_heading_problem(self):
+        root = self.build({"README.md": "---\ntitle: Example\n---\n\n## Starts At Two\n"})
+        self.assertIn("first heading must be H1, found H2", self.reasons(root))
+
+    def test_unterminated_front_matter_is_ordinary_content(self):
+        # Without a closing delimiter this is not front matter, so the second
+        # line is paragraph text and the document simply has no heading.
+        root = self.build({"README.md": "---\njust text\n"})
+        self.assertEqual([], self.reasons(root))
+
+
 class FenceIntegrityTests(RepositoryTestCase):
     def test_unclosed_fence_fails(self):
         root = self.build({"README.md": "# Title\n\n```\nunclosed\n"})
@@ -561,6 +625,23 @@ class FenceIntegrityTests(RepositoryTestCase):
 
     def test_closed_fence_passes(self):
         root = self.build({"README.md": "# Title\n\n```\nclosed\n```\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_info_string_does_not_close_a_fence(self):
+        # "```js" opens nothing and closes nothing; the final "```" closes.
+        root = self.build({"README.md": "# Title\n\n```\nline one\n```js\nline two\n```\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_shorter_run_does_not_close_a_longer_fence(self):
+        root = self.build({"README.md": "# Title\n\n````\ntext\n```\nstill inside\n````\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_longer_run_may_close_a_shorter_fence(self):
+        root = self.build({"README.md": "# Title\n\n```\ntext\n`````\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_trailing_whitespace_after_closing_fence_is_allowed(self):
+        root = self.build({"README.md": "# Title\n\n```\ntext\n```   \n"})
         self.assertEqual([], self.reasons(root))
 
     def test_tilde_fence_is_not_closed_by_backticks(self):
@@ -659,6 +740,65 @@ class ConfigTests(RepositoryTestCase):
         (root / "validate.json").write_text('{"nope": {}}', encoding="utf-8")
         with self.assertRaises(ConfigError):
             load_config(root)
+
+
+class ConfigTypeTests(RepositoryTestCase):
+    """Option values must have the type the check expects.
+
+    Covered in both directions: a well-typed configuration is accepted, and
+    each mistyped shape raises rather than being iterated as characters.
+    """
+
+    def test_well_typed_configuration_is_accepted(self):
+        root = self.build(
+            {"README.md": "# Title\n"},
+            config={
+                "required-files": {"paths": ["README.md"]},
+                "markdown-links": {"enabled": True},
+                "path-names": {
+                    "enabled": True,
+                    "pattern": "^[a-z.]+$",
+                    "exempt": ["README.md"],
+                },
+            },
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_string_where_an_array_is_expected_is_rejected(self):
+        root = self.build({"README.md": "# T\n"}, config={"required-files": {"paths": "README.md"}})
+        reasons = self.reasons(root)
+        self.assertEqual(1, len(reasons))
+        self.assertIn("must be an array; found string", reasons[0])
+
+    def test_non_string_array_entry_is_rejected(self):
+        root = self.build(
+            {"README.md": "# T\n"}, config={"required-files": {"paths": ["README.md", 42]}}
+        )
+        self.assertIn("must contain only strings; found number", self.reasons(root)[0])
+
+    def test_non_boolean_enabled_is_rejected(self):
+        root = self.build({"README.md": "# T\n"}, config={"markdown-links": {"enabled": "yes"}})
+        self.assertIn("must be a boolean; found string", self.reasons(root)[0])
+
+    def test_array_where_a_string_is_expected_is_rejected(self):
+        root = self.build({"README.md": "# T\n"}, config={"path-names": {"pattern": ["^x$"]}})
+        self.assertIn("must be a string; found array", self.reasons(root)[0])
+
+    def test_object_valued_rules_entries_are_allowed(self):
+        root = self.build(
+            {"readme.md": "# T\n"},
+            config={
+                "path-names": {
+                    "enabled": True,
+                    "rules": [{"pattern": "^[a-z.]+$", "scope": ["**"]}],
+                }
+            },
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_config_error_reports_one_finding_not_one_per_character(self):
+        root = self.build({"README.md": "# T\n"}, config={"required-files": {"paths": "README.md"}})
+        self.assertEqual(1, len(validate_repository(root)))
 
 
 class LocalCheckTests(RepositoryTestCase):

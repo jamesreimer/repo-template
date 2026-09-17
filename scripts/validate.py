@@ -196,6 +196,59 @@ def matches_any(relative_path: str, patterns) -> bool:
     return any(glob_to_regex(pattern).match(relative_path) for pattern in patterns)
 
 
+# Options whose list entries are objects rather than strings. Their contents
+# are validated where the check reads them.
+OBJECT_LIST_OPTIONS = {("path-names", "rules")}
+
+
+def describe_type(value) -> str:
+    """Name a JSON value's type the way validate.json spells it."""
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    if isinstance(value, (int, float)):
+        return "number"
+    return "null"
+
+
+def check_option_type(name: str, key: str, value, default) -> None:
+    """Raise ConfigError when an option's type cannot be what the check expects.
+
+    The expected type is taken from the default, so this stays correct as
+    options are added. Without it a string where an array belongs is iterated
+    character by character and reports one finding per letter.
+    """
+    expected = describe_type(default)
+    actual = describe_type(value)
+    if isinstance(default, bool):
+        valid = isinstance(value, bool)
+    elif isinstance(default, list):
+        valid = isinstance(value, list)
+    elif isinstance(default, str):
+        valid = isinstance(value, str)
+    else:
+        valid = actual == expected
+
+    if not valid:
+        raise ConfigError(
+            f"{CONFIG_PATH} check {name!r} option {key!r} must be {'an' if expected[0] in 'ao' else 'a'} "
+            f"{expected}; found {actual}"
+        )
+
+    if isinstance(default, list) and (name, key) not in OBJECT_LIST_OPTIONS:
+        for entry in value:
+            if not isinstance(entry, str):
+                raise ConfigError(
+                    f"{CONFIG_PATH} check {name!r} option {key!r} must contain only strings; "
+                    f"found {describe_type(entry)}"
+                )
+
+
 def load_config(root: Path) -> dict:
     """Merge validate.json over the defaults, rejecting unknown keys."""
     config = {name: dict(options) for name, options in DEFAULT_CONFIG.items()}
@@ -232,6 +285,7 @@ def load_config(root: Path) -> dict:
                     f"{CONFIG_PATH} check {name!r} declares unknown option {key!r}; "
                     f"known options: {known}"
                 )
+            check_option_type(name, key, value, DEFAULT_CONFIG[name][key])
             config[name][key] = value
     return config
 
@@ -306,7 +360,14 @@ def render_repository_structure(relative_paths) -> str:
     return header + "\n".join(sorted(entries)) + "\n"
 
 
-FENCE_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})")
+FENCE_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})(.*)$")
+# A setext underline: = for H1, - for H2. Only a heading when the line above
+# it is paragraph text, which is what distinguishes "---" here from a
+# thematic break.
+SETEXT_RE = re.compile(r"^[ \t]{0,3}(=+|-+)[ \t]*$")
+# YAML front matter delimiters, so a closing "---" is not read as a setext
+# underline for the last metadata line.
+FRONT_MATTER_RE = re.compile(r"^(-{3}|\.{3})[ \t]*$")
 HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 INLINE_LINK_RE = re.compile(r"\]\(([^()]*)\)")
 REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*(\S+)")
@@ -320,6 +381,43 @@ INLINE_CODE_RE = re.compile(r"`+[^`]*`+")
 EMPHASIS_RE = re.compile(r"[*_~]+")
 MARKDOWN_LINK_TEXT_RE = re.compile(r"\[([^\]]*)\]\([^()]*\)")
 SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def open_fence(line: str):
+    """Return (character, length) when a line opens a fenced code block."""
+    match = FENCE_RE.match(line)
+    if match is None:
+        return None
+    run = match.group(1)
+    return run[0], len(run)
+
+
+def is_closing_fence(line: str, character: str, minimum_length: int) -> bool:
+    """Report whether a line closes a fence opened with the given run.
+
+    CommonMark requires a closing fence to use the same character, to be at
+    least as long as the opening run, and to carry nothing after it but
+    whitespace. An info string closes nothing.
+    """
+    match = FENCE_RE.match(line)
+    if match is None:
+        return False
+    run = match.group(1)
+    return run[0] == character and len(run) >= minimum_length and not match.group(2).strip()
+
+
+def front_matter_end(lines) -> int:
+    """Return the last line number of YAML front matter, or 0 when absent.
+
+    Front matter only exists when the very first line is a delimiter and a
+    closing delimiter follows. An unterminated one is ordinary content.
+    """
+    if not lines or not FRONT_MATTER_RE.match(lines[0]):
+        return 0
+    for index in range(1, len(lines)):
+        if FRONT_MATTER_RE.match(lines[index]):
+            return index + 1
+    return 0
 
 
 def normalize_reference_label(label: str) -> str:
@@ -357,29 +455,54 @@ def parse_markdown(content: str):
     headings = []
     definition_problems = []
     fence = None
+    fence_length = 0
     fence_line = 0
-    for number, raw_line in enumerate(content.splitlines(), start=1):
-        fence_match = FENCE_RE.match(raw_line)
-        if fence_match:
-            marker = fence_match.group(1)[0]
-            if fence is None:
-                fence = marker
-                fence_line = number
-            elif fence == marker:
+
+    def record_heading(number: int, level: int, text: str) -> None:
+        headings.append((number, level))
+        base = heading_slug(text)
+        if base:
+            seen = counts[base]
+            counts[base] += 1
+            anchors.add(base if seen == 0 else f"{base}-{seen}")
+
+    source_lines = content.splitlines()
+    metadata_end = front_matter_end(source_lines)
+    # Text of the previous line when it could be a setext heading, else None.
+    setext_candidate = None
+
+    for number, raw_line in enumerate(source_lines, start=1):
+        if number <= metadata_end:
+            continue
+
+        if fence is not None:
+            if is_closing_fence(raw_line, fence, fence_length):
                 fence = None
+                fence_length = 0
                 fence_line = 0
             continue
-        if fence is not None:
+
+        opened = open_fence(raw_line)
+        if opened is not None:
+            fence, fence_length = opened
+            fence_line = number
+            setext_candidate = None
+            continue
+
+        if setext_candidate is not None and SETEXT_RE.match(raw_line):
+            # The heading belongs to the line above, which carries its text.
+            record_heading(number - 1, 1 if raw_line.strip()[0] == "=" else 2, setext_candidate)
+            setext_candidate = None
             continue
 
         heading_match = HEADING_RE.match(raw_line)
         if heading_match:
-            headings.append((number, len(heading_match.group(1))))
-            base = heading_slug(heading_match.group(2))
-            if base:
-                seen = counts[base]
-                counts[base] += 1
-                anchors.add(base if seen == 0 else f"{base}-{seen}")
+            record_heading(number, len(heading_match.group(1)), heading_match.group(2))
+            setext_candidate = None
+        elif raw_line.strip():
+            setext_candidate = raw_line.strip()
+        else:
+            setext_candidate = None
 
         line = INLINE_CODE_RE.sub("", raw_line)
         for match in INLINE_LINK_RE.finditer(line):
@@ -429,17 +552,20 @@ def markdown_without_fenced_code(content: str) -> str:
     """
     lines = []
     fence = None
+    fence_length = 0
     for raw_line in content.splitlines():
-        fence_match = FENCE_RE.match(raw_line)
-        if fence_match:
-            marker = fence_match.group(1)[0]
-            if fence is None:
-                fence = marker
-            elif fence == marker:
+        if fence is not None:
+            if is_closing_fence(raw_line, fence, fence_length):
                 fence = None
+                fence_length = 0
             lines.append("")
             continue
-        lines.append("" if fence is not None else raw_line)
+        opened = open_fence(raw_line)
+        if opened is not None:
+            fence, fence_length = opened
+            lines.append("")
+            continue
+        lines.append(raw_line)
     trailing = "\n" if content.endswith("\n") else ""
     return "\n".join(lines) + trailing
 
