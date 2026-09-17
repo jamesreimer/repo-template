@@ -79,7 +79,7 @@ comments. An unknown check or option is an error rather than a silent no-op.
 | `markdown-links` | on | `globs` |
 | `markdown-headings` | on | `globs` |
 | `credential-files` | on | `patterns`, `allow` |
-| `path-names` | **off** | `pattern`, `scope`, `exempt` |
+| `path-names` | **off** | `pattern`, `scope`, `exempt`, `rules` |
 | `structure-snapshot` | **off** | `path` |
 
 Glob options accept `*` within a path segment and `**` across segments.
@@ -90,9 +90,45 @@ target may resolve outside the repository, so the link is reported without being
 read or resolved.
 
 `path-names` is off by default because naming conventions are repository
-decisions, not universal ones. A repository with source files that are
-legitimately not kebab-case should leave it off rather than accumulate
-exemptions.
+decisions, not universal ones.
+
+A repository with one convention states `pattern`, `scope` and `exempt`
+directly. A repository whose convention differs by directory states `rules`
+instead: a list of objects each taking its own `pattern`, `scope` and `exempt`.
+Providing `rules` replaces the single-rule form rather than layering on top of
+it.
+
+Rules are evaluated in declared order, and the first rule whose `scope` matches
+decides a path. One path therefore produces at most one finding no matter how
+many rules could have matched. Order rules most specific first and put any
+catch-all last. A path matched by no rule is not checked.
+
+This lets one repository require kebab-case for content while requiring
+snake_case for Python modules, which a single pattern cannot express:
+
+```json
+{
+  "path-names": {
+    "enabled": true,
+    "rules": [
+      {
+        "_": "Python modules in Python-owned directories.",
+        "pattern": "^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*|__init__)\\.py$",
+        "scope": ["scripts/*.py", "tests/*.py"]
+      },
+      {
+        "_": "Everything else is kebab-case.",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?:\\.[a-z0-9]+)*$",
+        "scope": ["**"],
+        "exempt": ["scripts", "tests"]
+      }
+    ]
+  }
+}
+```
+
+As at the top level, keys beginning with `_` inside a rule are ignored and may
+be used as comments.
 
 ## Repository-specific checks
 
