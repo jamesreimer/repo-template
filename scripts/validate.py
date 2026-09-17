@@ -80,6 +80,10 @@ DEFAULT_CONFIG = {
         "enabled": True,
         "globs": ["**/*.md"],
     },
+    "markdown-headings": {
+        "enabled": True,
+        "globs": ["**/*.md"],
+    },
     "credential-files": {
         "enabled": True,
         "patterns": [
@@ -347,6 +351,7 @@ def parse_markdown(content: str):
     destinations = []
     defined_labels = set()
     usages = []
+    headings = []
     fence = None
     for number, raw_line in enumerate(content.splitlines(), start=1):
         fence_match = FENCE_RE.match(raw_line)
@@ -362,6 +367,7 @@ def parse_markdown(content: str):
 
         heading_match = HEADING_RE.match(raw_line)
         if heading_match:
+            headings.append((number, len(heading_match.group(1))))
             base = heading_slug(heading_match.group(2))
             if base:
                 seen = counts[base]
@@ -381,7 +387,7 @@ def parse_markdown(content: str):
             # A collapsed reference, [text][], takes its label from the text.
             label = match.group(2) or match.group(1)
             usages.append((number, label))
-    return anchors, destinations, defined_labels, usages
+    return anchors, destinations, defined_labels, usages, headings
 
 
 def strip_inline_code(line: str) -> str:
@@ -456,6 +462,7 @@ class RepositoryValidator:
         self._check_credential_files()
         self._check_path_names()
         self._check_markdown_links()
+        self._check_heading_hierarchy()
         self._check_structure_snapshot()
         self._run_local_checks()
         return sorted(set(self.findings))
@@ -508,6 +515,7 @@ class RepositoryValidator:
     def _read_text_files(self) -> None:
         globs = list(self.config["text-encoding"].get("globs", ()))
         globs.extend(self.config["markdown-links"].get("globs", ()))
+        globs.extend(self.config["markdown-headings"].get("globs", ()))
         globs.append(self.config["structure-snapshot"].get("path", STRUCTURE_SNAPSHOT_PATH))
         report = self._enabled("text-encoding")
         for relative_path in self.files:
@@ -606,7 +614,7 @@ class RepositoryValidator:
         self._check_reference_labels()
 
         present = set(self.files)
-        for relative_path, (_, destinations, _, _) in sorted(self.markdown.items()):
+        for relative_path, (_, destinations, _, _, _) in sorted(self.markdown.items()):
             directory = relative_path.rsplit("/", 1)[0] if "/" in relative_path else ""
             for line, raw_destination in destinations:
                 destination = parse_destination(raw_destination)
@@ -649,7 +657,7 @@ class RepositoryValidator:
 
     def _check_reference_labels(self) -> None:
         """Report reference-style links and images with no matching definition."""
-        for relative_path, (_, _, defined_labels, usages) in sorted(self.markdown.items()):
+        for relative_path, (_, _, defined_labels, usages, _) in sorted(self.markdown.items()):
             for line, label in usages:
                 if normalize_reference_label(label) not in defined_labels:
                     self._add(
@@ -671,6 +679,32 @@ class RepositoryValidator:
                 "markdown-links",
                 line,
             )
+
+    def _check_heading_hierarchy(self) -> None:
+        """Report headings that skip a level, such as H1 followed by H4.
+
+        A skipped level breaks document outline and assistive-technology
+        navigation. The first heading in a document may be any level; only
+        increases of more than one level are reported.
+        """
+        if not self._enabled("markdown-headings"):
+            return
+        globs = self.config["markdown-headings"].get("globs", ())
+        for relative_path, content in sorted(self.text.items()):
+            if not matches_any(relative_path, globs):
+                continue
+            parsed = self.markdown.get(relative_path)
+            headings = parsed[4] if parsed is not None else parse_markdown(content)[4]
+            previous = None
+            for line, level in headings:
+                if previous is not None and level > previous + 1:
+                    self._add(
+                        relative_path,
+                        f"heading level skips from H{previous} to H{level}",
+                        "markdown-headings",
+                        line,
+                    )
+                previous = level
 
     def _check_structure_snapshot(self) -> None:
         if not self._enabled("structure-snapshot"):
