@@ -83,6 +83,11 @@ comments. An unknown check or option is an error rather than a silent no-op.
 
 Glob options accept `*` within a path segment and `**` across segments.
 
+Committed symbolic links are rejected unconditionally and have no configuration key.
+A symbolic link is mechanically distinct from ordinary repository content and its
+target may resolve outside the repository, so the link is reported without being
+read or resolved.
+
 `path-names` is off by default because naming conventions are repository
 decisions, not universal ones. A repository with source files that are
 legitimately not kebab-case should leave it off rather than accumulate
@@ -113,8 +118,8 @@ defect in this template and should be fixed here.
 ## Scope of automated validation
 
 Validation checks mechanical invariants: encoding, newlines, junk artifacts,
-required files, internal link resolution, credential-shaped filenames, and
-optionally path naming and the structure snapshot.
+required files, internal link resolution, credential-shaped filenames, committed
+symbolic links, and optionally path naming and the structure snapshot.
 
 It deliberately does not check scope, boundaries, proportionality, or prose
 quality. Those remain human and AI review responsibilities.

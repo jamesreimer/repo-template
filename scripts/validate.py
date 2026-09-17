@@ -18,6 +18,7 @@ import importlib.util
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from collections import Counter
@@ -261,11 +262,17 @@ def enumerate_repository_files(root: Path):
     collected = []
     for current, directory_names, file_names in os.walk(root):
         current_path = Path(current)
-        directory_names[:] = sorted(
-            name
-            for name in directory_names
-            if name != ".git" and not (current_path / name).is_symlink()
-        )
+        retained = []
+        for name in sorted(directory_names):
+            if name == ".git":
+                continue
+            if (current_path / name).is_symlink():
+                # Record the link without descending through it, so the symlink
+                # check can report it. Descending would leave the repository.
+                collected.append((current_path / name).relative_to(root).as_posix())
+                continue
+            retained.append(name)
+        directory_names[:] = retained
         for file_name in sorted(file_names):
             relative = (current_path / file_name).relative_to(root)
             collected.append(relative.as_posix())
@@ -416,6 +423,7 @@ class RepositoryValidator:
     def validate(self):
         self.files = enumerate_repository_files(self.root)
         self._check_junk_artifacts()
+        self._check_symlinks()
         self._read_text_files()
         self._check_final_newline()
         self._check_required_files()
@@ -443,6 +451,32 @@ class RepositoryValidator:
                     relative_path,
                     "file lives in a junk artifact directory",
                     "junk-artifacts",
+                )
+
+    def _check_symlinks(self) -> None:
+        """Reject committed symbolic links without reading their targets.
+
+        This check is unconditional. A symbolic link is mechanically distinct
+        from ordinary repository content and its target may resolve outside the
+        repository entirely, so allowing one by configuration would widen the
+        contract for little demonstrated value. The link is never read or
+        resolved, so nothing outside the repository is opened.
+        """
+        for relative_path in self.files:
+            try:
+                mode = (self.root / relative_path).lstat().st_mode
+            except OSError as error:
+                self._add(
+                    relative_path,
+                    f"repository path metadata could not be read ({error.strerror or error})",
+                    "symlinks",
+                )
+                continue
+            if stat.S_ISLNK(mode):
+                self._add(
+                    relative_path,
+                    "symbolic link must not be committed; the link target was not read",
+                    "symlinks",
                 )
 
     def _read_text_files(self) -> None:
