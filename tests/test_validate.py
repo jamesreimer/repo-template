@@ -235,6 +235,146 @@ class SymlinkTests(RepositoryTestCase):
         self.assertNotIn("symlinks", self.checks(root))
 
 
+class PathNameRuleTests(RepositoryTestCase):
+    """Mixed conventions: kebab-case generally, snake_case for Python modules."""
+
+    KEBAB = r"^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+)*$"
+    SNAKE = r"^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*|__init__)\.py$"
+
+    def mixed(self):
+        return {
+            "path-names": {
+                "enabled": True,
+                "rules": [
+                    {"pattern": self.SNAKE, "scope": ["scripts/*.py", "tests/*.py"]},
+                    {"pattern": self.KEBAB, "scope": ["**"], "exempt": ["scripts", "tests"]},
+                ],
+            }
+        }
+
+    def test_mixed_conventions_accept_both_styles(self):
+        root = self.build(
+            {
+                "readme-page.md": "# Page\n",
+                "docs/getting-started.md": "# Start\n",
+                "scripts/update_repository_structure.py": "x = 1\n",
+                "tests/test_validate.py": "x = 1\n",
+            },
+            config=self.mixed(),
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_python_module_must_be_snake_case(self):
+        root = self.build(
+            {"readme-page.md": "# P\n", "scripts/BadName.py": "x = 1\n"}, config=self.mixed()
+        )
+        self.assertIn(
+            "path component 'BadName.py' does not match the configured pattern",
+            self.reasons(root),
+        )
+
+    def test_kebab_rule_does_not_reject_python_modules(self):
+        root = self.build({"scripts/setup_git_hooks.py": "x = 1\n"}, config=self.mixed())
+        self.assertEqual([], self.reasons(root))
+
+    def test_ordinary_path_must_be_kebab_case(self):
+        root = self.build({"docs/Bad_Name.md": "# B\n"}, config=self.mixed())
+        self.assertIn(
+            "path component 'Bad_Name.md' does not match the configured pattern",
+            self.reasons(root),
+        )
+
+    def test_one_path_yields_at_most_one_finding(self):
+        root = self.build(
+            {"scripts/BadName.py": "x = 1\n"},
+            config={
+                "path-names": {
+                    "enabled": True,
+                    "rules": [
+                        {"pattern": self.SNAKE, "scope": ["scripts/*.py"]},
+                        {"pattern": self.KEBAB, "scope": ["**"]},
+                    ],
+                }
+            },
+        )
+        findings = [f for f in validate_repository(root) if f.check == "path-names"]
+        self.assertEqual(1, len(findings))
+
+    def test_first_matching_rule_decides(self):
+        # The narrow rule is listed first and exempts the path, so the later
+        # catch-all never sees it.
+        root = self.build(
+            {"scripts/BadName.py": "x = 1\n"},
+            config={
+                "path-names": {
+                    "enabled": True,
+                    "rules": [
+                        {"pattern": self.SNAKE, "scope": ["scripts/**"], "exempt": ["scripts/**"]},
+                        {"pattern": self.KEBAB, "scope": ["**"]},
+                    ],
+                }
+            },
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_single_rule_form_still_works(self):
+        root = self.build(
+            {"Bad_Name.md": "# B\n"},
+            config={"path-names": {"enabled": True, "pattern": self.KEBAB, "scope": ["**"]}},
+        )
+        self.assertIn(
+            "path component 'Bad_Name.md' does not match the configured pattern",
+            self.reasons(root),
+        )
+
+    def test_rules_replace_the_single_rule_form(self):
+        # The top-level pattern would reject this name; the rules list governs.
+        root = self.build(
+            {"docs/page.md": "# P\n"},
+            config={
+                "path-names": {
+                    "enabled": True,
+                    "pattern": "^never-matches$",
+                    "rules": [{"pattern": self.KEBAB, "scope": ["**"]}],
+                }
+            },
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_path_outside_every_rule_scope_is_not_checked(self):
+        root = self.build(
+            {"Vendor_Dir/Thing.md": "# T\n"},
+            config={
+                "path-names": {
+                    "enabled": True,
+                    "rules": [{"pattern": self.KEBAB, "scope": ["docs/**"]}],
+                }
+            },
+        )
+        self.assertEqual([], self.reasons(root))
+
+    def test_invalid_rule_pattern_is_reported(self):
+        root = self.build(
+            {"README.md": "# T\n"},
+            config={"path-names": {"enabled": True, "rules": [{"pattern": "["}]}},
+        )
+        self.assertTrue(any("rule 0 pattern is invalid" in reason for reason in self.reasons(root)))
+
+    def test_unknown_rule_option_is_reported(self):
+        root = self.build(
+            {"README.md": "# T\n"},
+            config={"path-names": {"enabled": True, "rules": [{"patern": "^x$"}]}},
+        )
+        self.assertTrue(any("unknown option 'patern'" in reason for reason in self.reasons(root)))
+
+    def test_non_object_rule_is_reported(self):
+        root = self.build(
+            {"README.md": "# T\n"},
+            config={"path-names": {"enabled": True, "rules": ["not-an-object"]}},
+        )
+        self.assertTrue(any("must be a JSON object" in reason for reason in self.reasons(root)))
+
+
 class MarkdownLinkTests(RepositoryTestCase):
     def test_reports_missing_target(self):
         root = self.build({"README.md": "# Title\n\n[gone](docs/missing.md)\n"})

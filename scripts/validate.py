@@ -111,6 +111,7 @@ DEFAULT_CONFIG = {
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
         "scope": ["**"],
         "exempt": [],
+        "rules": [],
     },
     "structure-snapshot": {
         "enabled": False,
@@ -574,17 +575,66 @@ class RepositoryValidator:
                     "credential-files",
                 )
 
+    def _path_name_rules(self):
+        """Return the configured path-name rules in evaluation order.
+
+        A repository with one naming convention states ``pattern``, ``scope``
+        and ``exempt`` directly. A repository whose convention differs by
+        directory states ``rules`` instead, which fully replaces the single
+        form rather than layering on top of it.
+        """
+        options = self.config["path-names"]
+        raw_rules = options.get("rules") or []
+        if raw_rules:
+            return raw_rules
+        return [
+            {
+                "pattern": options.get("pattern", ""),
+                "scope": options.get("scope", ()),
+                "exempt": options.get("exempt", ()),
+            }
+        ]
+
+    def _compile_path_name_rules(self):
+        """Validate and compile the rules, or report why they cannot be used."""
+        compiled = []
+        for index, raw in enumerate(self._path_name_rules()):
+            if not isinstance(raw, dict):
+                self._add(
+                    CONFIG_PATH,
+                    f"path-names rule {index} must be a JSON object",
+                    "path-names",
+                )
+                return None
+            # Keys beginning with "_" are comments, as they are at the top level.
+            declared = {key for key in raw if not key.startswith("_")}
+            unknown = sorted(declared - {"pattern", "scope", "exempt"})
+            if unknown:
+                self._add(
+                    CONFIG_PATH,
+                    f"path-names rule {index} declares unknown option {unknown[0]!r}; "
+                    "known options: exempt, pattern, scope",
+                    "path-names",
+                )
+                return None
+            try:
+                pattern = re.compile(raw.get("pattern", ""))
+            except re.error as error:
+                self._add(
+                    CONFIG_PATH,
+                    f"path-names rule {index} pattern is invalid ({error})",
+                    "path-names",
+                )
+                return None
+            compiled.append((pattern, raw.get("scope", ()), raw.get("exempt", ())))
+        return compiled
+
     def _check_path_names(self) -> None:
         if not self._enabled("path-names"):
             return
-        options = self.config["path-names"]
-        try:
-            pattern = re.compile(options.get("pattern", ""))
-        except re.error as error:
-            self._add(CONFIG_PATH, f"path-names pattern is invalid ({error})", "path-names")
+        rules = self._compile_path_name_rules()
+        if rules is None:
             return
-        scope = options.get("scope", ())
-        exempt = options.get("exempt", ())
 
         seen = set()
         for relative_path in self.files:
@@ -593,15 +643,21 @@ class RepositoryValidator:
                 if candidate in seen:
                     continue
                 seen.add(candidate)
-                if not matches_any(candidate, scope) or matches_any(candidate, exempt):
-                    continue
-                name = candidate.rsplit("/", 1)[-1]
-                if not pattern.match(name):
-                    self._add(
-                        candidate,
-                        f"path component {name!r} does not match the configured pattern",
-                        "path-names",
-                    )
+                # The first rule whose scope matches decides this path, so one
+                # path yields at most one finding no matter how many rules could
+                # have matched. Order rules most specific first.
+                for pattern, scope, exempt in rules:
+                    if not matches_any(candidate, scope):
+                        continue
+                    if not matches_any(candidate, exempt):
+                        name = candidate.rsplit("/", 1)[-1]
+                        if not pattern.match(name):
+                            self._add(
+                                candidate,
+                                f"path component {name!r} does not match the configured pattern",
+                                "path-names",
+                            )
+                    break
 
     def _check_markdown_links(self) -> None:
         if not self._enabled("markdown-links"):
