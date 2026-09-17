@@ -630,6 +630,58 @@ class HtmlBlockSetextTests(RepositoryTestCase):
         self.assertIn("heading level skips from H1 to H3", self.reasons(root))
 
 
+class SetextContextTests(RepositoryTestCase):
+    """A Setext underline only heads a paragraph.
+
+    These pin the contexts where a preceding line is not paragraph text, each
+    verified against a CommonMark reference implementation. Every case here
+    once produced a wrong heading or a wrong absence of one.
+    """
+
+    def test_one_line_comment_does_not_swallow_the_paragraph_below(self):
+        # A comment block ends at "-->", so "Title" is ordinary text.
+        root = self.build({"README.md": "<!-- comment -->\nTitle\n=====\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_inline_html_may_begin_heading_text(self):
+        root = self.build({"README.md": "<span>x</span> Title\n=====\n\n## Sub\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_autolink_may_begin_heading_text(self):
+        root = self.build({"README.md": "<https://example.com> Title\n=====\n\n## Sub\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_heading_inside_an_html_block_is_not_a_heading(self):
+        root = self.build({"README.md": "# Title\n\n<div>\n# Not A Heading\n</div>\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_rule_after_a_list_is_not_a_setext_underline(self):
+        root = self.build({"README.md": "---\n- a\n- b\n---\n\n# Project\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_consecutive_rules_are_not_a_heading(self):
+        root = self.build({"README.md": "# Title\n\n---\n\n---\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_blockquote_continuation_does_not_create_a_heading(self):
+        root = self.build({"README.md": "# Title\n\n> quote\nstill quoted\n=====\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_list_continuation_does_not_create_a_heading(self):
+        root = self.build({"README.md": "# Title\n\n- item\nstill the item\n=====\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_indented_line_continues_a_paragraph_rather_than_starting_code(self):
+        # Indented code cannot interrupt a paragraph, so this is still one
+        # paragraph and the underline heads it.
+        root = self.build({"README.md": "Para text\n    continued\n=====\n"})
+        self.assertEqual([], self.reasons(root))
+
+    def test_indented_code_after_a_blank_line_is_not_heading_text(self):
+        root = self.build({"README.md": "# Title\n\n    code\n    ----\n"})
+        self.assertEqual([], self.reasons(root))
+
+
 class FrontMatterTests(RepositoryTestCase):
     def test_front_matter_closing_delimiter_is_not_a_setext_heading(self):
         root = self.build(

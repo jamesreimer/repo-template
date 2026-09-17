@@ -405,8 +405,42 @@ FRONT_MATTER_RE = re.compile(r"^(-{3}|\.{3})[ \t]*$")
 # blank lines do not match, which is what keeps a leading thematic break
 # from being read as front matter.
 YAML_ENTRY_RE = re.compile(r"^(?:#|[A-Za-z_][A-Za-z0-9_.-]*[ \t]*:)")
-# A line that opens or continues an HTML block cannot be Setext heading text.
-HTML_BLOCK_RE = re.compile(r"^[ \t]{0,3}<")
+# HTML block starts, from the CommonMark block conditions. Only these begin a
+# block: inline HTML and autolinks are paragraph text, so a line opening with
+# <span>, <em> or <https://...> can still be Setext heading text.
+HTML_BLOCK_TAGS = frozenset(
+    """address article aside base basefont blockquote body caption center col
+    colgroup dd details dialog dir div dl dt fieldset figcaption figure footer
+    form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li
+    link main menu menuitem nav noframes ol optgroup option p param pre script
+    search section style summary table tbody td textarea tfoot th thead title
+    tr track ul""".split()
+)
+HTML_TAG_LINE_RE = re.compile(r"^[ \t]{0,3}</?([A-Za-z][A-Za-z0-9-]*)")
+# Declarations, processing instructions and CDATA also begin a block.
+HTML_DECLARATION_RE = re.compile(r"^[ \t]{0,3}<(?:\?|!(?!--))")
+# A comment block ends on the line carrying "-->", not at the next blank
+# line, so a paragraph after a one-line comment is ordinary text again.
+HTML_COMMENT_OPEN_RE = re.compile(r"^[ \t]{0,3}<!--")
+# A line opening a list item or block quote belongs to a container, not to a
+# paragraph, so an unindented underline after it is a thematic break rather
+# than a Setext heading. Erring toward missing a heading is deliberate: a
+# missed heading reports nothing, while a wrong one reports a false defect.
+CONTAINER_START_RE = re.compile(r"^[ \t]{0,3}(?:[-*+]([ \t]|$)|\d{1,9}[.)]([ \t]|$)|>)")
+# An indented code line is not paragraph text either.
+INDENTED_CODE_RE = re.compile(r"^(?: {4}|\t)")
+# A rule or underline is never itself heading text.
+RULE_ONLY_RE = re.compile(r"^[ \t]{0,3}(?:[-*_=][ \t]*){3,}$")
+
+
+def opens_html_block(line: str) -> bool:
+    """Report whether a line begins an HTML block rather than paragraph text."""
+    if HTML_DECLARATION_RE.match(line):
+        return True
+    match = HTML_TAG_LINE_RE.match(line)
+    return match is not None and match.group(1).lower() in HTML_BLOCK_TAGS
+
+
 HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
 INLINE_LINK_RE = re.compile(r"\]\(([^()]*)\)")
 REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*(\S+)")
@@ -519,9 +553,15 @@ def parse_markdown(content: str):
     metadata_end = front_matter_end(source_lines)
     # Text of the previous line when it could be a setext heading, else None.
     setext_candidate = None
-    # An HTML block runs until a blank line. Its last line is not paragraph
-    # text, so a following "---" belongs to the block rather than heading it.
+    # An HTML block runs until a blank line, except a comment, which ends on
+    # the line carrying "-->". Lines inside a block are not paragraph text, so
+    # a following "---" belongs to the block rather than heading it.
     in_html_block = False
+    in_html_comment = False
+    line_is_html = False
+    # A list item or block quote keeps absorbing following lines as lazy
+    # continuations until a blank line, so none of them heads a paragraph.
+    in_container = False
 
     for number, raw_line in enumerate(source_lines, start=1):
         if number <= metadata_end:
@@ -547,16 +587,48 @@ def parse_markdown(content: str):
             setext_candidate = None
             continue
 
+        # "line_is_html" covers the current line; "in_html_block" says whether a
+        # block continues past it. A one-line comment is both: not paragraph
+        # text itself, but not carrying into the line below either.
         if not raw_line.strip():
+            line_is_html = False
             in_html_block = False
-        elif not in_html_block and HTML_BLOCK_RE.match(raw_line):
+            in_html_comment = False
+            in_container = False
+        elif in_html_comment:
+            line_is_html = True
+            if "-->" in raw_line:
+                in_html_comment = False
+                in_html_block = False
+        elif in_html_block:
+            line_is_html = True
+        elif HTML_COMMENT_OPEN_RE.match(raw_line):
+            line_is_html = True
+            if "-->" not in raw_line:
+                in_html_block = True
+                in_html_comment = True
+        elif opens_html_block(raw_line):
+            line_is_html = True
             in_html_block = True
+        else:
+            line_is_html = False
 
-        heading_match = HEADING_RE.match(raw_line)
+        if CONTAINER_START_RE.match(raw_line):
+            in_container = True
+
+        heading_match = None if line_is_html else HEADING_RE.match(raw_line)
         if heading_match:
             record_heading(number, len(heading_match.group(1)), heading_match.group(2))
             setext_candidate = None
-        elif raw_line.strip() and not in_html_block:
+        elif (
+            raw_line.strip()
+            and not line_is_html
+            and not in_container
+            # Indented code only begins after a blank line; directly under a
+            # paragraph the same line lazily continues it.
+            and not (INDENTED_CODE_RE.match(raw_line) and setext_candidate is None)
+            and not RULE_ONLY_RE.match(raw_line)
+        ):
             setext_candidate = raw_line.strip()
         else:
             setext_candidate = None
