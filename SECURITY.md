@@ -1,23 +1,19 @@
 # Security Policy
 
-## Scope
-
-Security reports are appropriate for vulnerabilities in this repository's
-Python scripts, GitHub Actions workflows, dependency update configuration, and
-Git hooks. Tests are in scope when a defect in them materially affects a
-validation assumption.
-
-Ordinary bugs, documentation corrections, and general questions should use a
-regular repository issue.
-
 ## Reporting a vulnerability
 
-When exploit details could create risk, use GitHub's private vulnerability
-reporting for this repository rather than a public issue.
-
+Use this repository's GitHub private vulnerability reporting when available.
 Include the affected component, impact, reproduction conditions, and any known
 mitigation. If private reporting is unavailable, open a brief public issue
-requesting private contact, without including exploit details.
+requesting private contact without including exploit details or credentials.
 
-This repository does not offer a bug bounty, response-time guarantee,
-supported-version matrix, or formal coordinated disclosure program.
+Ordinary bugs and documentation corrections belong in regular issues.
+
+## Template adoption
+
+Replace this policy with the project's actual reporting route and supported
+versions. Copying this file does not enable private reporting or establish a
+response-time commitment.
+
+The supplied checks include recognizable private-key detection. They do not
+establish that a repository or its Git history contains no secrets.

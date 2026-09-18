@@ -1,170 +1,103 @@
 # Repository Template
 
-A technology-neutral baseline for repository hygiene, contributor and agent
-guidance, and lightweight mechanical validation.
+A reusable starting point for Git repositories, with contributor guidance and
+maintained tools for common file checks. It does not prescribe an application
+language, directory layout, deployment system, or organizational governance.
 
-This repository owns **repository mechanics**. It does not own governance
-standards, normative content, or any language, framework, or deployment
-scaffolding.
+## Start a repository
 
-## What it provides
+1. Create a repository from this template or copy the files you need.
+2. Replace this README with the project's purpose and usage instructions.
+3. Review `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and `AGENTS.md` for the
+   new project's actual ownership, reporting route, and working practices.
+4. Adapt the checks and ignore patterns to the project's files and requirements.
+5. Configure repository permissions and branch protection on your Git host.
+   If requiring CI, the supplied job is named **Repository validation**.
 
-| Area | Files |
+The template is released under [CC0](LICENSE). Choose the appropriate license
+for your project's own content deliberately.
+
+## Run checks
+
+Install Python 3.10 or later and [Lychee 0.24.2](https://github.com/lycheeverse/lychee/releases/tag/lychee-v0.24.2),
+with `lychee` available on `PATH`. Then:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/pre-commit run --all-files --show-diff-on-failure
+```
+
+On Windows, use `.venv\Scripts\python.exe` and
+`.venv\Scripts\pre-commit.exe` instead. Initial setup downloads isolated hook
+environments and requires network access. Link checking itself is offline.
+
+The same pre-commit configuration runs locally and in CI. Checks may fix
+whitespace or formatting; review those changes and rerun. `--all-files` checks
+Git-tracked files, so stage new files before running it.
+
+Optionally run checks when committing:
+
+```sh
+.venv/bin/pre-commit install
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance and validation details.
+
+## What is checked
+
+| Responsibility | Tool |
 | --- | --- |
-| Encoding and line endings | `.editorconfig`, `.gitattributes`, `.vscode/settings.json` |
-| Ignore rules | `.gitignore` |
-| Markdown hygiene | `.markdownlint-cli2.jsonc` |
-| Python tooling lint | `ruff.toml` |
-| Mechanical validation | `validate.json`, `scripts/validate.py`, `tests/` |
-| Structure snapshot | `repository-structure.txt`, `scripts/update_repository_structure.py` |
-| Local hooks | `.githooks/pre-commit`, `scripts/setup_git_hooks.py` |
-| Continuous integration | `.github/workflows/validate.yml`, `.github/dependabot.yml` |
-| Contributor and agent entry points | `CONTRIBUTING.md`, `AGENTS.md`, `SECURITY.md` |
-| Host branch protection | `rulesets/default-branch.json` |
+| Merge markers, file endings, trailing whitespace, and mixed line endings | pre-commit-hooks |
+| JSON, YAML, and TOML syntax | pre-commit-hooks |
+| Case-colliding paths and broken symlinks | pre-commit-hooks |
+| Recognizable private-key content | pre-commit-hooks |
+| Selected Markdown structure, syntax, and reference rules | markdownlint-cli2 |
+| Local Markdown link destinations and fragments | Lychee |
+| Python lint and formatting, when Python files are present | Ruff |
+| GitHub Actions workflow syntax and expressions | actionlint |
 
-## Non-goals
+Private-key detection is limited; it is not a comprehensive secret scanner.
+External URLs are not checked. Offline link checking does not render a website
+or resolve a framework's routes. Projects with generated pages or special URL
+semantics should configure checks against the appropriate source or build.
 
-This repository does not provide language runtimes or framework scaffolding,
-package manifests, deployment, container, or infrastructure files, release or
-changelog policy, downstream synchronization machinery, or validators for
-subjective judgment.
+Markdown rules are selected explicitly in `.markdownlint-cli2.jsonc`. These
+are editable defaults, not a claim that every flagged document is invalid
+Markdown. Both ATX (`#`) and Setext headings are supported; there is no required
+heading style, first heading, single-H1 rule, or prose line-length limit.
 
-It carries no governance standards, adopted or authored. A repository's
-governing authority is its own decision, made through whatever adoption process
-its organization uses. Bundling a standard with repository mechanics would let
-it enter an organization as a side effect of wanting line-ending configuration,
-which is not adoption. [AGENTS.md](AGENTS.md) names a recommended candidate
-without shipping it.
+## Ownership and standards
 
-Consuming repositories keep their own authority. Adopting this baseline does
-not make this repository authoritative for them.
+This repository owns the reusable baseline. A repository created from it owns
+its copy and may change its files, tooling, and defaults. There is no obligation
+to maintain byte-identical files or synchronize later template revisions.
 
-## Design principle
+Standards have a separate role: explicitly adopted standards govern within
+their assigned scope. The baseline does not override them, and a standard's
+source location does not automatically confer authority over another repository.
+Record the standards that actually apply in the consuming repository's existing
+authority entry point and route contributors to it from `AGENTS.md`.
 
-Add a file, check, or automation only when a concrete need has been
-demonstrated. Conventionality is not a justification. A baseline that grows
-faster than its demonstrated need stops being a baseline.
+The [standards template library](https://github.com/jamesreimer/standards-templates)
+provides adoption candidates covering architectural reasoning, standards
+adoption, repository responsibility, operational execution, work identification,
+naming, shared assets, and domain-specific subjects. Consider each relevant
+responsibility and any existing governing standards; architectural reasoning
+is not a substitute for the other subjects. Linking to the library does not
+adopt its contents, and using this template does not adopt any of them.
 
-## Requirements
+No separate provenance document is required by this template. Keep attribution,
+license notices, and dependency identities where they serve their actual purpose
+or are required by applicable terms or adopted standards.
 
-Python 3.9 or later. The Python file validator needs no Python packages.
-The floor is deliberately low so `python3 scripts/validate.py` works on a machine with only the system Python,
-including stock macOS.
+## Design choices
 
-Markdown checks also require markdownlint-cli2 (Node.js 22+) and Lychee 0.24.2.
-Install Lychee from its [release binaries](https://github.com/lycheeverse/lychee/releases/tag/lychee-v0.24.2).
-Markdown, Python lint, and workflow linting run in CI through pinned actions.
+Established tools own their parsing and validation domains. This template ships
+configuration, not a custom validation engine, extension API, or generated tree
+snapshot. Add project tests and domain-specific checks when the project needs
+them, using the existing runner or its own build system.
 
-## Validation
-
-```bash
-python3 -m unittest discover -s tests
-```
-
-```bash
-python3 scripts/validate.py
-```
-
-Optionally enable the version-controlled pre-commit hook:
-
-```bash
-python3 scripts/setup_git_hooks.py
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the configuration reference and the
-full local check list.
-
-Markdown rules run through `markdownlint-cli2`; local links and fragments run
-through `python3 scripts/check_markdown_links.py` using Lychee offline. Both
-commands run in CI. The Python file validator does not parse Markdown.
-
-The former `markdown-links` and `markdown-headings` validator configuration keys
-and Python Markdown parsing helpers are retired. Upgrade the validator,
-Markdown configuration, link-check script, and CI workflow together. Local
-checks importing the removed helpers need review; this is an interface change,
-not an invitation to recreate the old parser in a consumer. The shipped
-configuration already enables the replacement checks.
-
-## Adoption
-
-Copy the files into the consuming repository according to the classification
-below, then write a `validate.json` describing which checks that repository
-wants.
-
-| Class | Meaning | Files |
-| --- | --- | --- |
-| **Baseline** | Copy substantially unchanged | `.editorconfig`, `.gitattributes`, `.markdownlint-cli2.jsonc`, `.vscode/settings.json`, `.githooks/pre-commit`, `scripts/validate.py`, `scripts/check_markdown_links.py`, `scripts/update_repository_structure.py`, `scripts/setup_git_hooks.py`, `tests/`, `.github/dependabot.yml` |
-| **Adapt** | Copy, then customize | `.gitignore`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `README.md`, `ruff.toml`, `validate.json`, `.github/workflows/validate.yml`, `.github/pull_request_template.md` |
-| **Local** | Author for your repository rather than copying | `LICENSE`, `scripts/validate_local.py` |
-| **Generated** | Produce with the tooling; never copy this repository's artifact | `repository-structure.txt` |
-| **Optional host configuration** | Install deliberately; copying the file alone has no effect | `rulesets/default-branch.json` |
-
-File disposition and feature activation are different axes. The Git hook files
-are Baseline — copy them unchanged — while running
-`python3 scripts/setup_git_hooks.py` to activate them is optional.
-
-`scripts/` is deliberately split across two classes. The four scripts above are
-Baseline and should not diverge between repositories. `scripts/validate_local.py`
-is Local: it does not exist here, and each repository that needs one writes its
-own.
-
-`scripts/validate.py` is intended to stay byte-identical across consumers.
-Repository-specific checks belong in `scripts/validate_local.py`, never in a
-fork of the validator. If a consumer cannot express a check that way, that is a
-defect in this template and belongs here.
-
-Recording provenance is recommended but not required: note the source
-repository and the commit adopted from, so a later change here can be reviewed
-deliberately. Changes here are review candidates, never automatic downstream
-updates. This repository provides no synchronization mechanism.
-
-## Host-side settings
-
-Everything above describes files inside Git. A repository's behavior also
-depends on state held by its host: default branch, merge methods, branch
-protection, required checks, deletion of merged branches, vulnerability
-reporting, and Actions permissions. That state is not established by copying
-files, and this template does not manage it.
-
-`rulesets/default-branch.json` is the one exception, and only partly. It is a
-desired configuration expressed as a file:
-
-> **A checked-in ruleset is not evidence that a branch is protected.** The
-> effective configuration lives at the host, behind authentication. Unlike every
-> other file here, `scripts/validate.py` cannot verify it, and deliberately does
-> not try — adding authenticated network access to an offline validator would
-> cost more than the check is worth.
-
-Repository rulesets are not available on every plan and visibility combination.
-Private repositories require a paid plan — Pro for a user account, Team or
-Enterprise for an organization — and organizations on GitHub Free can apply
-rulesets only to public repositories. This is the only file here with a billing
-dependency: every other file works for anyone who copies it, while this one may
-not be installable at all, and nothing in the repository will say so. Confirm
-availability before relying on it. A repository that cannot install it should
-treat branch protection as an unmet requirement rather than assume the file
-provides one.
-
-Install it deliberately, then confirm the result at the host:
-
-```bash
-gh api --method POST repos/OWNER/REPO/rulesets --input rulesets/default-branch.json
-```
-
-The ruleset protects the default branch by blocking deletion and
-non-fast-forward pushes, requiring a pull request with squash merge, and
-declaring no bypass actors. It requires zero approvals, because a single
-maintainer approving their own pull request is ceremony rather than review.
-
-It deliberately does **not** require a status check. Doing so would couple the
-ruleset to the exact job name in `.github/workflows/validate.yml`; renaming that
-job would leave every pull request waiting on a check that never reports. A
-repository that wants CI as a merge precondition should add that rule after
-confirming its own stable check context.
-
-Access, review, merge, deployment, and authority policies beyond this remain the
-consuming repository's responsibility.
-
-## License
-
-Released under CC0 1.0 Universal. See [LICENSE](LICENSE).
+Evaluate additions against a concrete need and their maintenance cost for
+consuming repositories. Revise defaults that obstruct a project's requirements
+rather than treating their presence in the template as proof they are necessary.

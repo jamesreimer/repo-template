@@ -1,9 +1,6 @@
+// File selection belongs to pre-commit. These are editable baseline rules.
+// Lychee checks cross-file destinations; markdownlint owns Markdown rules.
 {
-  // Markdown rules belong here. Python handles file-level checks only.
-  // MD041 allows badges or other prose before the first heading.
-  // MD047 is covered by the Python final-newline check.
-  // MD024 stays off: repeated headings have valid suffixed anchors.
-  // Lychee checks cross-file links via scripts/check_markdown_links.py.
   "config": {
     "default": false,
     "MD001": true,
@@ -16,19 +13,16 @@
     "MD021": true,
     "MD022": true,
     "MD023": true,
-    "MD025": true,
     "MD027": true,
     "MD028": true,
     "MD037": true,
     "MD038": true,
     "MD039": true,
-    "MD041": { "allow_preamble": true },
     "MD042": true,
     "MD051": true,
     "MD052": true,
     "MD053": true,
     "MD055": true,
     "MD056": true
-  },
-  "globs": ["**/*.md", "!.git/**"]
+  }
 }

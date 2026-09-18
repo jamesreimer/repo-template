@@ -1,4 +1,4 @@
-# Operating system and editor artifacts
+# Local operating-system and editor artifacts
 .DS_Store
 Thumbs.db
 desktop.ini
@@ -6,33 +6,18 @@ desktop.ini
 *.swo
 *~
 
-# Python
+# Tool environments and caches
+.venv/
 __pycache__/
 *.py[cod]
-.venv/
-venv/
 .ruff_cache/
-.mypy_cache/
 .pytest_cache/
-
-# Node
 node_modules/
-npm-debug.log*
 
-# Build output
-dist/
-build/
-.cache/
-
-# Credentials and local environment
+# Local environment values; reviewed examples may be committed
 .env
 .env.*
 !.env.example
 !.env.sample
-*.pem
-*.p12
-*.pfx
-*.jks
-*.keystore
-id_rsa
-id_ed25519
+!.env.*.example
+!.env.*.sample

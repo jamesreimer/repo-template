@@ -1,15 +1,9 @@
-# Pull Request
+## Change
 
-## Summary
-
-What changed, and why?
-
-## Scope
-
-Did this change alter repository structure, the baseline file set, or the
-validation model? Note anything a consuming repository would need to review.
+Describe the problem and resulting behavior. Explain material baseline or
+validation changes and their impact on consumers.
 
 ## Validation
 
-Confirm that the validator tests and repository validation passed, and note any
-supplemental checks that were run.
+Record checks performed and the behavior they establish. Include limitations
+or unresolved findings and their disposition.
