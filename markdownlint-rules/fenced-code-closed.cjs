@@ -11,6 +11,8 @@ module.exports = {
   function: (params, onError) => {
     const visit = (tokens) => {
       for (const token of tokens) {
+        // HTML-flow children may be reparsed; they are not Markdown fences.
+        if (token.type === "htmlFlow") continue;
         if (token.type === "codeFenced") {
           const fences = token.children.filter(
             (child) => child.type === "codeFencedFence"

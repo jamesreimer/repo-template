@@ -17,6 +17,9 @@ const cli = resolve(cliRoot, cliPackage.bin["markdownlint-cli2"]);
 const root = resolve(__dirname, "..");
 const configPath = join(root, ".markdownlint-cli2.jsonc");
 const cases = [
+  ["literal fence in raw pre block", "# Title\n\n<pre>\n\n```sh\nliteral\n</pre>\n", []],
+  ["fence after HTML flow ends", "# Title\n\n<details>\n<summary>Example</summary>\n\n```sh\ncode\n", [6]],
+  ["balanced literal fence in tight HTML", "# Title\n\n<details>\n```sh\ncode\n```\n</details>\n", []],
   ["closed backticks", "# Title\n\n```sh\necho ok\n```\n", []],
   ["closed tildes", "# Title\n\n~~~sh\necho ok\n~~~\n", []],
   ["longer closing fence", "# Title\n\n```sh\necho ok\n`````\n", []],

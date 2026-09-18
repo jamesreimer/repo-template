@@ -101,8 +101,9 @@ or are required by applicable terms or adopted standards.
 
 Established tools own their parsing and validation domains. This template ships
 configuration and one tested parser-backed authoring rule, without a custom
-validation engine, extension API, or generated tree snapshot. Add project tests and domain-specific checks when the project needs
-them, using the existing runner or its own build system.
+validation engine, extension API, or generated tree snapshot. Add project tests
+and domain-specific checks when the project needs them, using the existing
+runner or its own build system.
 
 Evaluate additions against a concrete need and their maintenance cost for
 consuming repositories. Revise defaults that obstruct a project's requirements
