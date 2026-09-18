@@ -1,8 +1,10 @@
 // File selection belongs to pre-commit. These are editable baseline rules.
 // Lychee checks cross-file destinations; markdownlint owns Markdown rules.
 {
+  "customRules": ["./markdownlint-rules/fenced-code-closed.cjs"],
   "config": {
     "default": false,
+    "fenced-code-closed": true,
     "MD001": true,
     "MD010": true,
     "MD011": true,

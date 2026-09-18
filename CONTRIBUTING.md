@@ -35,14 +35,20 @@ and explain substantive coverage reductions in the pull request.
 Lychee checks Markdown links offline, including fragments. Its native config
 and ignore files are supported; changes to them are changes to validation
 coverage. Absolute website routes, generated destinations, and external network
-checks need a project-specific decision. The baseline does not impose a custom
-Markdown parser or reject valid symbolic links categorically.
+checks need a project-specific decision. Markdown parsing belongs to the
+maintained tools. The local `fenced-code-closed` authoring rule consumes
+markdownlint's micromark tokens to require explicit fence closure; it neither
+parses Markdown independently nor chooses a closing position automatically.
+Working symbolic links are allowed.
 
 When changing a check or its scope, verify both that representative defects fail
 and that representative valid files pass in an isolated Git repository. Include
-new-file selection and the full CI command where relevant. The baseline has no
-repository-owned executable code requiring its own unit-test suite; projects
-should add tests for the behavior they own.
+new-file selection and the full CI command where relevant. The suite includes
+`tests/markdown-rules.test.cjs`, which exercises the local rule through the
+installed CLI and actual configuration in the same isolated hook environment.
+Keep embedded Markdown examples, container boundaries, opening-line locations,
+and no-autofix behavior covered when updating the rule or its parser dependency.
+Projects should add tests for the additional behavior they own.
 
 ## Updating dependencies
 

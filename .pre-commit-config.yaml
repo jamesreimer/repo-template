@@ -23,6 +23,14 @@ repos:
     hooks:
       - id: markdownlint-cli2
         language_version: "24.18.1"
+      - id: markdownlint-cli2
+        alias: test-markdown-rules
+        name: Test Markdown authoring rules
+        entry: node --test tests/markdown-rules.test.cjs
+        language_version: "24.18.1"
+        types: [file]
+        always_run: true
+        pass_filenames: false
 
   - repo: https://github.com/lycheeverse/lychee
     rev: 2bba271688c1abb1503097a064e6c3bc1d1b6a9b # lychee-v0.24.2

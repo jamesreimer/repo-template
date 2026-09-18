@@ -67,6 +67,12 @@ are editable defaults, not a claim that every flagged document is invalid
 Markdown. Both ATX (`#`) and Setext headings are supported; there is no required
 heading style, first heading, single-H1 rule, or prose line-length limit.
 
+One local authoring rule requires explicit closing code fences. Although
+CommonMark permits implicit closure, a forgotten closer can absorb intended
+prose and prevent its links from being checked. `fenced-code-closed` uses
+markdownlint's existing parser tokens and reports the opening line. It does not
+autofix because the intended closing position requires the author's judgment.
+
 ## Ownership and standards
 
 This repository owns the reusable baseline. A repository created from it owns
@@ -94,8 +100,8 @@ or are required by applicable terms or adopted standards.
 ## Design choices
 
 Established tools own their parsing and validation domains. This template ships
-configuration, not a custom validation engine, extension API, or generated tree
-snapshot. Add project tests and domain-specific checks when the project needs
+configuration and one tested parser-backed authoring rule, without a custom
+validation engine, extension API, or generated tree snapshot. Add project tests and domain-specific checks when the project needs
 them, using the existing runner or its own build system.
 
 Evaluate additions against a concrete need and their maintenance cost for
