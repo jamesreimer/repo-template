@@ -25,7 +25,7 @@ Reasoning Standard, which is domain-neutral and governs how work is reasoned
 about rather than any particular subject. It is a good candidate for
 repositories that do not already govern architectural reasoning:
 
-<https://github.com/jamesreimer/standards-templates/blob/8eafbc58279d265908d75ae784c8df1927063c12/templates/architectural-reasoning/standard.md>
+<https://github.com/jamesreimer/standards-templates/blob/d50955bdf1b03a8fb3a7981011ac8dc08fe9965e/templates/architectural-reasoning/standard.md>
 
 Adopting it is a deliberate decision belonging to the consuming repository or
 its organization, made through whatever adoption process that organization
@@ -65,12 +65,13 @@ layer around it.
 
 ## Tooling
 
-Repository tooling is Python, using only the standard library, targeting the
-version floor stated in [README.md](README.md). Use shell only where the shell
-is itself the interface, such as a Git hook shim.
+Repository-owned scripts use Python and the standard library, targeting the
+version floor in [README.md](README.md). Markdown parsing belongs to maintained
+tools: markdownlint for document rules and Lychee for links. Use shell where
+the shell is itself the interface, such as a Git hook shim.
 
-Do not add a package manager, dependency, or runtime to this repository solely
-to support repository tooling.
+Evaluate tooling dependencies against demonstrated correctness and maintenance
+needs. Prefer maintained tools over duplicating their parsers in this repository.
 
 ## Implementation lifecycle
 

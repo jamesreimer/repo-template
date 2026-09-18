@@ -2,22 +2,26 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
+from check_markdown_links import check_links  # noqa: E402
 from validate import (  # noqa: E402
     ConfigError,
     enumerate_repository_files,
     glob_to_regex,
-    heading_slug,
     load_config,
-    parse_destination,
     render_repository_structure,
     validate_repository,
 )
@@ -68,25 +72,6 @@ class GlobTranslationTests(unittest.TestCase):
         self.assertFalse(pattern.match("xenv"))
 
 
-class HeadingSlugTests(unittest.TestCase):
-    def test_lowercases_and_hyphenates(self):
-        self.assertEqual(heading_slug("Repository Architecture"), "repository-architecture")
-
-    def test_drops_punctuation_and_formatting(self):
-        self.assertEqual(heading_slug("What's **new**, really?"), "whats-new-really")
-
-    def test_preserves_code_span_text(self):
-        self.assertEqual(heading_slug("`validate.py` options"), "validatepy-options")
-
-
-class DestinationParsingTests(unittest.TestCase):
-    def test_strips_angle_brackets(self):
-        self.assertEqual(parse_destination("<docs/a.md>"), "docs/a.md")
-
-    def test_strips_trailing_title(self):
-        self.assertEqual(parse_destination('docs/a.md "A title"'), "docs/a.md")
-
-
 class JunkArtifactTests(RepositoryTestCase):
     def test_reports_junk_file(self):
         root = self.build({"README.md": "# Title\n", ".DS_Store": "junk\n"})
@@ -115,6 +100,23 @@ class FinalNewlineTests(RepositoryTestCase):
     def test_reports_missing_final_newline(self):
         root = self.build({"README.md": "# Title"})
         self.assertIn("text file must end with a newline", self.reasons(root))
+
+    def test_custom_glob_is_checked_independently_of_encoding(self):
+        root = self.build(
+            {"data.custom": b"value"},
+            config={
+                "text-encoding": {"enabled": False, "globs": []},
+                "final-newline": {"globs": ["**/*.custom"]},
+            },
+        )
+        self.assertIn("text file must end with a newline", self.reasons(root))
+
+    def test_newline_check_does_not_require_utf8_decoding(self):
+        root = self.build(
+            {"data.custom": b"\xff"},
+            config={"final-newline": {"globs": ["**/*.custom"]}},
+        )
+        self.assertEqual(["text file must end with a newline"], self.reasons(root))
 
     def test_empty_file_is_allowed(self):
         root = self.build({"README.md": "# Title\n", "placeholder.txt": ""})
@@ -375,416 +377,6 @@ class PathNameRuleTests(RepositoryTestCase):
         self.assertTrue(any("must be a JSON object" in reason for reason in self.reasons(root)))
 
 
-class MarkdownLinkTests(RepositoryTestCase):
-    def test_reports_missing_target(self):
-        root = self.build({"README.md": "# Title\n\n[gone](docs/missing.md)\n"})
-        self.assertTrue(any("does not exist" in reason for reason in self.reasons(root)))
-
-    def test_resolves_relative_target(self):
-        root = self.build(
-            {
-                "README.md": "# Title\n\n[guide](docs/guide.md)\n",
-                "docs/guide.md": "# Guide\n\n[home](../README.md)\n",
-            }
-        )
-        self.assertEqual(self.reasons(root), [])
-
-    def test_reports_unknown_anchor(self):
-        root = self.build({"README.md": "# Title\n\n[jump](#nowhere)\n"})
-        self.assertTrue(any("does not match a heading" in reason for reason in self.reasons(root)))
-
-    def test_accepts_known_anchor(self):
-        root = self.build({"README.md": "# Title\n\n## Real Section\n\n[jump](#real-section)\n"})
-        self.assertEqual(self.reasons(root), [])
-
-    def test_ignores_external_links(self):
-        root = self.build({"README.md": "# Title\n\n[ext](https://example.com/a.md)\n"})
-        self.assertEqual(self.reasons(root), [])
-
-    def test_ignores_links_inside_fenced_code(self):
-        root = self.build({"README.md": "# Title\n\n```\n[gone](docs/missing.md)\n```\n"})
-        self.assertEqual(self.reasons(root), [])
-
-    def test_reports_repository_absolute_link(self):
-        root = self.build({"README.md": "# Title\n\n[abs](/docs/guide.md)\n"})
-        self.assertTrue(any("repository-absolute" in reason for reason in self.reasons(root)))
-
-    def test_duplicate_headings_get_suffixed_anchors(self):
-        content = "# Title\n\n## Notes\n\n## Notes\n\n[second](#notes-1)\n"
-        root = self.build({"README.md": content})
-        self.assertEqual(self.reasons(root), [])
-
-
-class ReferenceLabelTests(RepositoryTestCase):
-    def test_undefined_reference_label_fails(self):
-        root = self.build({"README.md": "# Title\n\nSee [the guide][missing].\n"})
-        self.assertIn(
-            "reference-style link label 'missing' has no matching definition",
-            self.reasons(root),
-        )
-
-    def test_defined_reference_label_passes(self):
-        root = self.build(
-            {
-                "README.md": "# Title\n\nSee [the guide][ok].\n\n[ok]: guide.md\n",
-                "guide.md": "# Guide\n",
-            }
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_collapsed_reference_takes_label_from_text(self):
-        root = self.build(
-            {"README.md": "# Title\n\nSee [guide][].\n\n[guide]: guide.md\n", "guide.md": "# G\n"}
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_collapsed_reference_without_definition_fails(self):
-        root = self.build({"README.md": "# Title\n\nSee [guide][].\n"})
-        self.assertIn(
-            "reference-style link label 'guide' has no matching definition",
-            self.reasons(root),
-        )
-
-    def test_label_matching_ignores_case_and_collapses_whitespace(self):
-        root = self.build(
-            {
-                "README.md": "# Title\n\nSee [x][See   Also].\n\n[see also]: guide.md\n",
-                "guide.md": "# G\n",
-            }
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_reference_image_label_is_checked(self):
-        root = self.build({"README.md": "# Title\n\n![diagram][absent]\n"})
-        self.assertIn(
-            "reference-style link label 'absent' has no matching definition",
-            self.reasons(root),
-        )
-
-    def test_fenced_reference_usage_is_not_checked(self):
-        root = self.build({"README.md": "# Title\n\n```\n[text][nope]\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_fenced_definition_does_not_satisfy_a_real_usage(self):
-        root = self.build({"README.md": "# Title\n\nSee [x][ok].\n\n```\n[ok]: guide.md\n```\n"})
-        self.assertIn(
-            "reference-style link label 'ok' has no matching definition", self.reasons(root)
-        )
-
-    def test_inline_code_reference_is_not_checked(self):
-        root = self.build({"README.md": "# Title\n\nWrite `[text][label]` for a reference.\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_inline_link_is_not_treated_as_a_reference(self):
-        root = self.build(
-            {"README.md": "# Title\n\nSee [the guide](guide.md).\n", "guide.md": "# G\n"}
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_shortcut_reference_prose_is_not_flagged(self):
-        root = self.build({"README.md": "# Title\n\nAn array like [value] is ordinary prose.\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_definition_destination_is_still_resolved(self):
-        root = self.build({"README.md": "# Title\n\nSee [x][ok].\n\n[ok]: missing.md\n"})
-        self.assertIn("link destination 'missing.md' does not exist", self.reasons(root))
-
-
-class HeadingHierarchyTests(RepositoryTestCase):
-    def test_skipped_heading_level_fails(self):
-        root = self.build({"README.md": "# Title\n\n#### Deep\n"})
-        self.assertIn("heading level skips from H1 to H4", self.reasons(root))
-
-    def test_incrementing_headings_pass(self):
-        root = self.build({"README.md": "# Title\n\n## Two\n\n### Three\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_decreasing_heading_levels_pass(self):
-        root = self.build({"README.md": "# Title\n\n## Two\n\n### Three\n\n## Back\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_first_heading_must_be_h1(self):
-        root = self.build({"README.md": "## Starts At Two\n\n### Then Three\n"})
-        self.assertIn("first heading must be H1, found H2", self.reasons(root))
-
-    def test_document_must_contain_exactly_one_h1(self):
-        root = self.build({"README.md": "# One\n\n# Two\n"})
-        self.assertIn("document must contain exactly one H1; found 2", self.reasons(root))
-
-    def test_document_with_no_h1_fails(self):
-        root = self.build({"README.md": "## A\n\n### B\n"})
-        self.assertIn("document must contain exactly one H1; found 0", self.reasons(root))
-
-    def test_document_without_headings_is_not_reported(self):
-        root = self.build({"README.md": "Just prose, no headings.\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_fenced_h1_does_not_count(self):
-        root = self.build({"README.md": "# Real\n\n```\n# Fenced\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_fenced_heading_is_not_a_heading(self):
-        root = self.build({"README.md": "# Title\n\n```\n#### Not a heading\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_skip_is_reported_with_its_line_number(self):
-        root = self.build({"README.md": "# Title\n\n#### Deep\n"})
-        findings = validate_repository(root)
-        skips = [f for f in findings if f.check == "markdown-headings"]
-        self.assertEqual(1, len(skips))
-        self.assertEqual(3, skips[0].line)
-
-    def test_check_can_be_disabled(self):
-        root = self.build(
-            {"README.md": "# Title\n\n#### Deep\n"},
-            config={"markdown-headings": {"enabled": False}},
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_headings_are_checked_when_link_checking_is_disabled(self):
-        root = self.build(
-            {"README.md": "# Title\n\n#### Deep\n"},
-            config={"markdown-links": {"enabled": False}},
-        )
-        self.assertIn("heading level skips from H1 to H4", self.reasons(root))
-
-
-class SetextHeadingTests(RepositoryTestCase):
-    """Setext headings are valid CommonMark and must not be rejected.
-
-    Each rule is covered in both directions: valid input produces no finding,
-    invalid input produces the intended one.
-    """
-
-    def test_setext_h1_is_accepted(self):
-        root = self.build({"README.md": "Document Title\n==============\n\nBody.\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_setext_h1_with_atx_subheading_is_accepted(self):
-        root = self.build({"README.md": "Title\n=====\n\n## Section\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_setext_h1_and_setext_h2_are_accepted(self):
-        root = self.build({"README.md": "Title\n=====\n\nSection\n-------\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_setext_heading_produces_an_anchor(self):
-        root = self.build(
-            {"README.md": "Document Title\n==============\n\nSee [top](#document-title).\n"}
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_setext_document_starting_at_h2_still_fails(self):
-        root = self.build({"README.md": "Section\n-------\n\nBody.\n"})
-        self.assertIn("first heading must be H1, found H2", self.reasons(root))
-
-    def test_two_setext_h1s_still_fail(self):
-        root = self.build({"README.md": "One\n===\n\nTwo\n===\n"})
-        self.assertIn("document must contain exactly one H1; found 2", self.reasons(root))
-
-    def test_setext_heading_skip_is_still_reported(self):
-        root = self.build({"README.md": "Title\n=====\n\n#### Deep\n"})
-        self.assertIn("heading level skips from H1 to H4", self.reasons(root))
-
-    def test_thematic_break_after_blank_line_is_not_a_heading(self):
-        root = self.build({"README.md": "# Title\n\nSome text.\n\n---\n\nMore text.\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_setext_underline_inside_a_fence_is_not_a_heading(self):
-        root = self.build({"README.md": "# Title\n\n```\nFake\n====\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-
-class HtmlBlockSetextTests(RepositoryTestCase):
-    """A line closing an HTML block is not Setext heading text.
-
-    An HTML block runs until a blank line, so a "---" directly after one
-    belongs to the block rather than underlining its last line.
-    """
-
-    def test_html_block_followed_by_rule_is_not_a_heading(self):
-        root = self.build(
-            {
-                "README.md": '<div align="center">\n  <img src="logo.png">\n</div>\n'
-                "---\n\n# Project\n"
-            }
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_html_comment_followed_by_rule_is_not_a_heading(self):
-        root = self.build({"README.md": "<!-- markdownlint-disable -->\n---\n\n# Project\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_plain_line_inside_an_html_block_is_not_heading_text(self):
-        root = self.build({"README.md": "<div>\nplain text\n---\n\n# Project\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_html_block_ends_at_a_blank_line(self):
-        # After the blank line the paragraph is ordinary text again, so the
-        # underline below it really is a Setext heading.
-        root = self.build({"README.md": "<div></div>\n\nTitle\n=====\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_spurious_heading_does_not_mask_a_real_level_skip(self):
-        root = self.build({"README.md": "# Title\n\n<!-- x -->\n---\n\n### Deep\n"})
-        self.assertIn("heading level skips from H1 to H3", self.reasons(root))
-
-
-class SetextContextTests(RepositoryTestCase):
-    """A Setext underline only heads a paragraph.
-
-    These pin the contexts where a preceding line is not paragraph text, each
-    verified against a CommonMark reference implementation. Every case here
-    once produced a wrong heading or a wrong absence of one.
-    """
-
-    def test_one_line_comment_does_not_swallow_the_paragraph_below(self):
-        # A comment block ends at "-->", so "Title" is ordinary text.
-        root = self.build({"README.md": "<!-- comment -->\nTitle\n=====\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_inline_html_may_begin_heading_text(self):
-        root = self.build({"README.md": "<span>x</span> Title\n=====\n\n## Sub\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_autolink_may_begin_heading_text(self):
-        root = self.build({"README.md": "<https://example.com> Title\n=====\n\n## Sub\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_heading_inside_an_html_block_is_not_a_heading(self):
-        root = self.build({"README.md": "# Title\n\n<div>\n# Not A Heading\n</div>\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_rule_after_a_list_is_not_a_setext_underline(self):
-        root = self.build({"README.md": "---\n- a\n- b\n---\n\n# Project\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_consecutive_rules_are_not_a_heading(self):
-        root = self.build({"README.md": "# Title\n\n---\n\n---\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_blockquote_continuation_does_not_create_a_heading(self):
-        root = self.build({"README.md": "# Title\n\n> quote\nstill quoted\n=====\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_list_continuation_does_not_create_a_heading(self):
-        root = self.build({"README.md": "# Title\n\n- item\nstill the item\n=====\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_indented_line_continues_a_paragraph_rather_than_starting_code(self):
-        # Indented code cannot interrupt a paragraph, so this is still one
-        # paragraph and the underline heads it.
-        root = self.build({"README.md": "Para text\n    continued\n=====\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_indented_code_after_a_blank_line_is_not_heading_text(self):
-        root = self.build({"README.md": "# Title\n\n    code\n    ----\n"})
-        self.assertEqual([], self.reasons(root))
-
-
-class FrontMatterTests(RepositoryTestCase):
-    def test_front_matter_closing_delimiter_is_not_a_setext_heading(self):
-        root = self.build(
-            {"README.md": "---\ntitle: Example\nauthor: someone\n---\n\n# Real Title\n\nBody.\n"}
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_front_matter_does_not_hide_a_real_heading_problem(self):
-        root = self.build({"README.md": "---\ntitle: Example\n---\n\n## Starts At Two\n"})
-        self.assertIn("first heading must be H1, found H2", self.reasons(root))
-
-    def test_leading_thematic_break_does_not_suppress_anchor_checking(self):
-        root = self.build({"README.md": "---\n\n# Title\n\nSee [x](#nope).\n"})
-        self.assertIn(
-            "link anchor '#nope' does not match a heading in README.md", self.reasons(root)
-        )
-
-    def test_leading_thematic_break_does_not_suppress_heading_checking(self):
-        root = self.build({"README.md": "---\n\n## Starts At Two\n"})
-        self.assertIn("first heading must be H1, found H2", self.reasons(root))
-
-    def test_leading_thematic_break_does_not_suppress_fence_checking(self):
-        root = self.build({"README.md": "---\n\n# Title\n\n```\nunclosed\n"})
-        self.assertIn("fenced code block is not closed", self.reasons(root))
-
-    def test_front_matter_opening_with_a_yaml_comment_is_recognized(self):
-        root = self.build({"README.md": "---\n# a yaml comment\ntitle: x\n---\n\n# Real\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_unterminated_front_matter_is_ordinary_content(self):
-        # Without a closing delimiter this is not front matter, so the second
-        # line is paragraph text and the document simply has no heading.
-        root = self.build({"README.md": "---\njust text\n"})
-        self.assertEqual([], self.reasons(root))
-
-
-class FenceIntegrityTests(RepositoryTestCase):
-    def test_unclosed_fence_fails(self):
-        root = self.build({"README.md": "# Title\n\n```\nunclosed\n"})
-        self.assertIn("fenced code block is not closed", self.reasons(root))
-
-    def test_unclosed_fence_reports_the_opening_line(self):
-        root = self.build({"README.md": "# Title\n\n```\nunclosed\n"})
-        findings = [f for f in validate_repository(root) if "not closed" in f.reason]
-        self.assertEqual(3, findings[0].line)
-
-    def test_closed_fence_passes(self):
-        root = self.build({"README.md": "# Title\n\n```\nclosed\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_info_string_does_not_close_a_fence(self):
-        # "```js" opens nothing and closes nothing; the final "```" closes.
-        root = self.build({"README.md": "# Title\n\n```\nline one\n```js\nline two\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_shorter_run_does_not_close_a_longer_fence(self):
-        root = self.build({"README.md": "# Title\n\n````\ntext\n```\nstill inside\n````\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_longer_run_may_close_a_shorter_fence(self):
-        root = self.build({"README.md": "# Title\n\n```\ntext\n`````\n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_trailing_whitespace_after_closing_fence_is_allowed(self):
-        root = self.build({"README.md": "# Title\n\n```\ntext\n```   \n"})
-        self.assertEqual([], self.reasons(root))
-
-    def test_tilde_fence_is_not_closed_by_backticks(self):
-        root = self.build({"README.md": "# Title\n\n~~~\ntext\n```\n"})
-        self.assertIn("fenced code block is not closed", self.reasons(root))
-
-
-class ReferenceDefinitionIntegrityTests(RepositoryTestCase):
-    def test_duplicate_definition_fails(self):
-        root = self.build({"README.md": "# Title\n\n[a]: README.md\n[a]: README.md\n"})
-        self.assertIn("duplicate reference-style link definition 'a'", self.reasons(root))
-
-    def test_duplicate_detection_uses_label_normalization(self):
-        root = self.build(
-            {"README.md": "# Title\n\n[See Also]: README.md\n[see   also]: README.md\n"}
-        )
-        self.assertTrue(
-            any("duplicate reference-style link definition" in r for r in self.reasons(root))
-        )
-
-    def test_malformed_definition_without_destination_fails(self):
-        root = self.build({"README.md": "# Title\n\n[a]:\n"})
-        self.assertIn("reference-style link definition 'a' has no destination", self.reasons(root))
-
-    def test_distinct_definitions_pass(self):
-        root = self.build(
-            {
-                "README.md": "# Title\n\n[a]: README.md\n[b]: guide.md\n",
-                "guide.md": "# Guide\n",
-            }
-        )
-        self.assertEqual([], self.reasons(root))
-
-    def test_fenced_definitions_are_not_checked(self):
-        root = self.build({"README.md": "# Title\n\n```\n[a]: x\n[a]: y\n[b]:\n```\n"})
-        self.assertEqual([], self.reasons(root))
-
-
 class StructureSnapshotTests(RepositoryTestCase):
     def test_reports_stale_snapshot(self):
         root = self.build(
@@ -837,7 +429,7 @@ class ConfigTests(RepositoryTestCase):
     def test_missing_config_uses_defaults(self):
         root = self.build({"README.md": "# Title\n"})
         config = load_config(root)
-        self.assertTrue(config["markdown-links"]["enabled"])
+        self.assertTrue(config["final-newline"]["enabled"])
         self.assertFalse(config["path-names"]["enabled"])
 
     def test_config_error_type_is_raised_directly(self):
@@ -859,7 +451,7 @@ class ConfigTypeTests(RepositoryTestCase):
             {"README.md": "# Title\n"},
             config={
                 "required-files": {"paths": ["README.md"]},
-                "markdown-links": {"enabled": True},
+                "final-newline": {"enabled": True},
                 "path-names": {
                     "enabled": True,
                     "pattern": "^[a-z.]+$",
@@ -882,7 +474,7 @@ class ConfigTypeTests(RepositoryTestCase):
         self.assertIn("must contain only strings; found number", self.reasons(root)[0])
 
     def test_non_boolean_enabled_is_rejected(self):
-        root = self.build({"README.md": "# T\n"}, config={"markdown-links": {"enabled": "yes"}})
+        root = self.build({"README.md": "# T\n"}, config={"final-newline": {"enabled": "yes"}})
         self.assertIn("must be a boolean; found string", self.reasons(root)[0])
 
     def test_array_where_a_string_is_expected_is_rejected(self):
@@ -953,6 +545,27 @@ class LocalCheckTests(RepositoryTestCase):
         root = self.build({"README.md": "# Title\n", "scripts/validate_local.py": module})
         self.assertTrue(any("local checks raised" in reason for reason in self.reasons(root)))
 
+    def test_malformed_results_are_contained_and_valid_results_survive(self):
+        for invalid in [
+            ("a", "bad", "x"),
+            ("a", None, "x"),
+            ("a", -1, "x"),
+            ("a", True, "x"),
+            ("a", 1.2, "x"),
+            ("a", 0, None),
+            "abc",
+        ]:
+            with self.subTest(result=invalid):
+                module = (
+                    "def extra_checks(context):\n    return "
+                    + repr([invalid, ("README.md", 1, "valid result")])
+                    + "\n"
+                )
+                root = self.build({"scripts/validate_local.py": module})
+                reasons = self.reasons(root)
+                self.assertIn("valid result", reasons)
+                self.assertTrue(any("must yield" in reason for reason in reasons))
+
     def test_missing_entry_point_is_reported(self):
         root = self.build({"README.md": "# Title\n", "scripts/validate_local.py": "x = 1\n"})
         self.assertTrue(any("must define extra_checks" in reason for reason in self.reasons(root)))
@@ -1012,10 +625,223 @@ class EnumerationTests(RepositoryTestCase):
         self.assertIn("README.md", files)
         self.assertNotIn("ignored.txt", files)
 
+    def test_working_tree_deletion_is_not_a_symlink_error(self):
+        root = self.build({"old.txt": "old\n"}, {"required-files": {"paths": ["old.txt"]}})
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+        subprocess.run(["git", "-C", str(root), "add", "old.txt"], check=True)
+        (root / "old.txt").unlink()
+        self.assertNotIn("old.txt", enumerate_repository_files(root))
+        self.assertEqual(["required baseline file is missing"], self.reasons(root))
+
     def test_walk_fallback_lists_files(self):
         root = self.build({"README.md": "# Title\n", "docs/guide.md": "# Guide\n"})
         files = enumerate_repository_files(root)
         self.assertEqual(files, ("README.md", "docs/guide.md"))
+
+
+class RetiredMarkdownConfigTests(RepositoryTestCase):
+    def test_old_options_fail_explicitly(self):
+        for name in ("markdown-links", "markdown-headings"):
+            with self.subTest(check=name):
+                root = self.build({}, {name: {"enabled": True}})
+                findings = validate_repository(root)
+                self.assertEqual(1, len(findings))
+                self.assertEqual("config", findings[0].check)
+                self.assertIn("no longer exists", findings[0].reason)
+
+
+class LinkToolTests(RepositoryTestCase):
+    def run_links(self, root):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            result = check_links(root)
+        self.link_output = output.getvalue()
+        return result
+
+    def test_missing_tool_fails_instead_of_skipping_validation(self):
+        root = self.build({"README.md": "# Guide\n"})
+        with patch("check_markdown_links.shutil.which", return_value=None):
+            self.assertEqual(1, self.run_links(root))
+
+    @unittest.skipUnless(shutil.which("lychee"), "Lychee is not installed")
+    def test_real_parser_accepts_valid_markdown_and_rejects_broken_links(self):
+        cases = [
+            ("multiline reference", "See [doc][d].\n\n[d]:\n  guide.md\n", "# Guide\n", True),
+            ("quoted code", "> ```md\n> [sample](missing.md)\n> ```\n", "# Guide\n", True),
+            ("indented code", "    [sample](missing.md)\n", "# Guide\n", True),
+            ("angle title", '[doc](<guide.md> "Guide")\n', "# Guide\n", True),
+            ("missing parentheses", "[doc](missing(1).md)\n", "# Guide\n", False),
+            ("existing parentheses", "[doc](guide(1).md)\n", "# Guide\n", True),
+            ("comment heading", "[doc](guide.md#fake)\n", "# Guide\n\n<!--\n## Fake\n-->\n", False),
+            ("underscore", "[doc](guide.md#foo_bar)\n", "# Guide\n\n## foo_bar\n", True),
+            (
+                "inline html",
+                "[doc](guide.md#ctrl-keys)\n",
+                "# Guide\n\n## <kbd>Ctrl</kbd> keys\n",
+                True,
+            ),
+            ("setext", "[doc](guide.md#section)\n", "Title\n=====\n\nSection\n-------\n", True),
+            (
+                "duplicate",
+                "[doc](guide.md#section-1)\n",
+                "# Guide\n\n## Section\n\n## Section\n",
+                True,
+            ),
+            ("missing fragment", "[doc](guide.md#missing)\n", "# Guide\n", False),
+            ("absolute", "[doc](/guide.md)\n", "# Guide\n", False),
+            ("external offline", "[doc](https://nonexistent.invalid/)\n", "# Guide\n", True),
+        ]
+        for label, body, target, valid in cases:
+            with self.subTest(case=label):
+                root = self.build(
+                    {
+                        "README.md": "# Guide\n\n" + body,
+                        "guide.md": target,
+                        "guide(1).md": "# Guide\n",
+                    }
+                )
+                self.assertEqual(valid, self.run_links(root) == 0)
+
+    @unittest.skipUnless(shutil.which("lychee"), "Lychee is not installed")
+    def test_existing_file_outside_repository_is_rejected(self):
+        root = self.build({"README.md": "# Guide\n"})
+        with tempfile.TemporaryDirectory(dir=root.parent) as outside:
+            target = Path(outside) / "guide.md"
+            target.write_text("# Outside\n")
+            (root / "README.md").write_text(
+                "# Guide\n\n[outside](../" + Path(outside).name + "/guide.md)\n"
+            )
+            self.assertNotEqual(0, self.run_links(root))
+
+    @unittest.skipUnless(shutil.which("lychee"), "Lychee is not installed")
+    def test_ignored_markdown_is_not_checked(self):
+        root = self.build(
+            {
+                "README.md": "# Guide\n",
+                ".gitignore": "generated/\n",
+                "generated/guide.md": "[broken](missing.md)\n",
+            }
+        )
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+        self.assertEqual(0, self.run_links(root))
+
+
+MARKDOWNLINT_CONFIG = Path(__file__).resolve().parents[1] / ".markdownlint-cli2.jsonc"
+
+# The Markdown semantics the validator no longer implements, and the defect
+# each rule exists to catch.
+DELEGATED_RULES = {
+    "MD001": "heading levels increment by one",
+    "MD025": "a document has one top-level heading",
+    "MD041": "a document opens at the top level",
+    "MD051": "a same-file link fragment names a heading",
+    "MD052": "a reference label is defined",
+    "MD053": "a reference definition is used and not duplicated",
+}
+
+
+def load_markdownlint_config():
+    """Read the repository's markdownlint configuration, stripping comments."""
+    text = MARKDOWNLINT_CONFIG.read_text(encoding="utf-8")
+    without_comments = re.sub(r"^\s*//.*$", "", text, flags=re.MULTILINE)
+    return json.loads(without_comments)["config"]
+
+
+class MarkdownlintConfigurationTests(unittest.TestCase):
+    """The rules the validator delegates to must actually be enabled.
+
+    Removing a check from validate.py only moves ownership if markdownlint is
+    configured to make it. These read the configuration this repository ships,
+    which is also the one consumers inherit.
+    """
+
+    def test_every_delegated_rule_is_enabled(self):
+        config = load_markdownlint_config()
+        for rule, purpose in sorted(DELEGATED_RULES.items()):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, config, f"{rule} must be enabled so that {purpose}")
+                self.assertTrue(config[rule], f"{rule} must not be disabled")
+
+    def test_first_heading_rule_allows_a_preamble(self):
+        # Without this MD041 reads as "the first line is a heading", which
+        # rejects a document opening with a badge block or a table of contents.
+        self.assertEqual({"allow_preamble": True}, load_markdownlint_config()["MD041"])
+
+    def test_default_rules_are_opt_in(self):
+        self.assertIs(False, load_markdownlint_config()["default"])
+
+
+class MarkdownlintBehaviorTests(unittest.TestCase):
+    """Evidence that markdownlint reports the defects the validator gave up.
+
+    This is an integration check against the real tool, not a reimplementation
+    of its test suite: one document per delegated rule, plus the valid
+    CommonMark that the validator's own parser used to reject. It is skipped
+    when markdownlint-cli2 is unavailable, because the Python suite must keep
+    running with no Node toolchain present.
+    """
+
+    REPORTED = {
+        "MD001": "# Title\n\n#### Deep\n",
+        "MD025": "# One\n\n# Two\n",
+        "MD041": "## Starts At Two\n\n### Then Three\n",
+        "MD051": "# Title\n\nSee [x](#nowhere).\n",
+        "MD052": "# Title\n\nSee [x][missing].\n",
+        "MD053": "# Title\n\n[unused]: https://example.com\n",
+    }
+
+    # Valid CommonMark that the hand-rolled parser rejected. markdownlint must
+    # accept all of it, or the ownership move traded one false positive set for
+    # another.
+    ACCEPTED = {
+        "setext headings": "Document Title\n==============\n\n## Section\n",
+        "type-7 html block": '<img src="logo.png" alt="Logo">\nProject Banner\n---\n\n# Real Title\n',
+        "type-1 html block": "<pre>code</pre>\n\n# Real Title\n\n## Section\n",
+        "reference definition then rule": "[ref]: https://example.com\n\n---\n\n# T\n\nUse [it][ref].\n",
+        "loose list then rule": "# Guide\n\n- item\n\n  inner paragraph\n\n---\n\n## Section\n",
+        "heading in a blockquote": "# Guide\n\n> ## Quoted heading\n>\n> body\n\nSee [q](#quoted-heading).\n",
+        "setext heading in a blockquote": "# Guide\n\n> Quoted title\n> ---\n>\n> body\n\nSee [q](#quoted-title).\n",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        if shutil.which("markdownlint-cli2") is None:
+            raise unittest.SkipTest("markdownlint-cli2 is not installed")
+
+    def lint(self, files):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        shutil.copy(MARKDOWNLINT_CONFIG, root / MARKDOWNLINT_CONFIG.name)
+        for name, content in files.items():
+            (root / name).write_text(content, encoding="utf-8")
+        result = subprocess.run(
+            ["markdownlint-cli2", "**/*.md"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        # markdownlint-cli2 writes its findings to stderr.
+        self.assertIn(result.returncode, (0, 1), result.stdout + result.stderr)
+        return result.returncode, result.stdout + result.stderr
+
+    def test_each_delegated_rule_reports_its_defect(self):
+        files = {f"{rule.lower()}.md": body for rule, body in self.REPORTED.items()}
+        code, output = self.lint(files)
+        self.assertEqual(code, 1, output)
+        for rule in sorted(self.REPORTED):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, output, f"{rule} did not report {rule.lower()}.md")
+
+    def test_valid_commonmark_is_accepted(self):
+        files = {f"ok{index}.md": body for index, body in enumerate(self.ACCEPTED.values())}
+        names = dict(zip(files, self.ACCEPTED))
+        code, output = self.lint(files)
+        self.assertEqual(code, 0, output)
+        for name, label in names.items():
+            with self.subTest(case=label):
+                self.assertNotIn(name, output, f"{label} was rejected: {output}")
 
 
 if __name__ == "__main__":

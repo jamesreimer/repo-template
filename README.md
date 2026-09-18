@@ -47,11 +47,12 @@ faster than its demonstrated need stops being a baseline.
 
 ## Requirements
 
-Python 3.9 or later, from the standard library alone. No packages are
-installed to run validation locally. The floor is deliberately low so that
-`python3 scripts/validate.py` works on a machine with only the system Python,
+Python 3.9 or later. The Python file validator needs no Python packages.
+The floor is deliberately low so `python3 scripts/validate.py` works on a machine with only the system Python,
 including stock macOS.
 
+Markdown checks also require markdownlint-cli2 (Node.js 22+) and Lychee 0.24.2.
+Install Lychee from its [release binaries](https://github.com/lycheeverse/lychee/releases/tag/lychee-v0.24.2).
 Markdown, Python lint, and workflow linting run in CI through pinned actions.
 
 ## Validation
@@ -73,6 +74,17 @@ python3 scripts/setup_git_hooks.py
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the configuration reference and the
 full local check list.
 
+Markdown rules run through `markdownlint-cli2`; local links and fragments run
+through `python3 scripts/check_markdown_links.py` using Lychee offline. Both
+commands run in CI. The Python file validator does not parse Markdown.
+
+The former `markdown-links` and `markdown-headings` validator configuration keys
+and Python Markdown parsing helpers are retired. Upgrade the validator,
+Markdown configuration, link-check script, and CI workflow together. Local
+checks importing the removed helpers need review; this is an interface change,
+not an invitation to recreate the old parser in a consumer. The shipped
+configuration already enables the replacement checks.
+
 ## Adoption
 
 Copy the files into the consuming repository according to the classification
@@ -81,7 +93,7 @@ wants.
 
 | Class | Meaning | Files |
 | --- | --- | --- |
-| **Baseline** | Copy substantially unchanged | `.editorconfig`, `.gitattributes`, `.markdownlint-cli2.jsonc`, `.vscode/settings.json`, `.githooks/pre-commit`, `scripts/validate.py`, `scripts/update_repository_structure.py`, `scripts/setup_git_hooks.py`, `tests/`, `.github/dependabot.yml` |
+| **Baseline** | Copy substantially unchanged | `.editorconfig`, `.gitattributes`, `.markdownlint-cli2.jsonc`, `.vscode/settings.json`, `.githooks/pre-commit`, `scripts/validate.py`, `scripts/check_markdown_links.py`, `scripts/update_repository_structure.py`, `scripts/setup_git_hooks.py`, `tests/`, `.github/dependabot.yml` |
 | **Adapt** | Copy, then customize | `.gitignore`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `README.md`, `ruff.toml`, `validate.json`, `.github/workflows/validate.yml`, `.github/pull_request_template.md` |
 | **Local** | Author for your repository rather than copying | `LICENSE`, `scripts/validate_local.py` |
 | **Generated** | Produce with the tooling; never copy this repository's artifact | `repository-structure.txt` |
@@ -91,7 +103,7 @@ File disposition and feature activation are different axes. The Git hook files
 are Baseline — copy them unchanged — while running
 `python3 scripts/setup_git_hooks.py` to activate them is optional.
 
-`scripts/` is deliberately split across two classes. The three scripts above are
+`scripts/` is deliberately split across two classes. The four scripts above are
 Baseline and should not diverge between repositories. `scripts/validate_local.py`
 is Local: it does not exist here, and each repository that needs one writes its
 own.

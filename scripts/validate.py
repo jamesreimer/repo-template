@@ -9,6 +9,9 @@ across repositories that adopt it. Everything repository-specific belongs in
 The checks here cover mechanical invariants only. Scope, boundaries, normative
 calibration, and prose quality remain human and AI review responsibilities.
 
+Markdown rules run separately through markdownlint. This script does not parse
+Markdown. scripts/check_markdown_links.py delegates links to Lychee.
+
 Runs on Python 3.9 and later with the standard library alone.
 """
 
@@ -21,10 +24,8 @@ import re
 import stat
 import subprocess
 import sys
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import unquote
 
 CONFIG_PATH = "validate.json"
 STRUCTURE_SNAPSHOT_PATH = "repository-structure.txt"
@@ -76,14 +77,6 @@ DEFAULT_CONFIG = {
         "enabled": True,
         "paths": [],
     },
-    "markdown-links": {
-        "enabled": True,
-        "globs": ["**/*.md"],
-    },
-    "markdown-headings": {
-        "enabled": True,
-        "globs": ["**/*.md"],
-    },
     "credential-files": {
         "enabled": True,
         "patterns": [
@@ -120,6 +113,15 @@ DEFAULT_CONFIG = {
 }
 
 CHECK_NAMES = tuple(DEFAULT_CONFIG)
+
+# Reject retired options explicitly rather than silently claiming coverage.
+RETIRED_CHECKS = {
+    "markdown-headings": "Markdown heading rules are configured in .markdownlint-cli2.jsonc",
+    "markdown-links": (
+        "the handwritten Markdown parser was removed; markdownlint checks same-file "
+        "fragments and reference labels; scripts/check_markdown_links.py checks cross-file links"
+    ),
+}
 
 
 @dataclass(frozen=True, order=True)
@@ -303,6 +305,11 @@ def load_config(root: Path) -> dict:
         if name.startswith("_"):
             continue
         if name not in config:
+            if name in RETIRED_CHECKS:
+                raise ConfigError(
+                    f"{CONFIG_PATH} declares check {name!r}, which no longer exists; "
+                    f"{RETIRED_CHECKS[name]}"
+                )
             known = ", ".join(CHECK_NAMES)
             raise ConfigError(
                 f"{CONFIG_PATH} declares unknown check {name!r}; known checks: {known}"
@@ -347,7 +354,7 @@ def enumerate_repository_files(root: Path):
                 sorted(
                     entry.decode("utf-8", errors="replace")
                     for entry in result.stdout.split(b"\0")
-                    if entry
+                    if entry and os.path.lexists(root / entry.decode("utf-8", errors="replace"))
                 )
             )
 
@@ -393,329 +400,6 @@ def render_repository_structure(relative_paths) -> str:
     return header + "\n".join(sorted(entries)) + "\n"
 
 
-FENCE_RE = re.compile(r"^[ \t]{0,3}(`{3,}|~{3,})(.*)$")
-# A setext underline: = for H1, - for H2. Only a heading when the line above
-# it is paragraph text, which is what distinguishes "---" here from a
-# thematic break.
-SETEXT_RE = re.compile(r"^[ \t]{0,3}(=+|-+)[ \t]*$")
-# YAML front matter delimiters, so a closing "---" is not read as a setext
-# underline for the last metadata line.
-FRONT_MATTER_RE = re.compile(r"^(-{3}|\.{3})[ \t]*$")
-# The first line inside front matter: a YAML key or a comment. Prose and
-# blank lines do not match, which is what keeps a leading thematic break
-# from being read as front matter.
-YAML_ENTRY_RE = re.compile(r"^(?:#|[A-Za-z_][A-Za-z0-9_.-]*[ \t]*:)")
-# HTML block starts, from the CommonMark block conditions. Only these begin a
-# block: inline HTML and autolinks are paragraph text, so a line opening with
-# <span>, <em> or <https://...> can still be Setext heading text.
-HTML_BLOCK_TAGS = frozenset(
-    """address article aside base basefont blockquote body caption center col
-    colgroup dd details dialog dir div dl dt fieldset figcaption figure footer
-    form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li
-    link main menu menuitem nav noframes ol optgroup option p param pre script
-    search section style summary table tbody td textarea tfoot th thead title
-    tr track ul""".split()
-)
-HTML_TAG_LINE_RE = re.compile(r"^[ \t]{0,3}</?([A-Za-z][A-Za-z0-9-]*)")
-# Declarations, processing instructions and CDATA also begin a block.
-HTML_DECLARATION_RE = re.compile(r"^[ \t]{0,3}<(?:\?|!(?!--))")
-# A comment block ends on the line carrying "-->", not at the next blank
-# line, so a paragraph after a one-line comment is ordinary text again.
-HTML_COMMENT_OPEN_RE = re.compile(r"^[ \t]{0,3}<!--")
-# A line opening a list item or block quote belongs to a container, not to a
-# paragraph, so an unindented underline after it is a thematic break rather
-# than a Setext heading. Erring toward missing a heading is deliberate: a
-# missed heading reports nothing, while a wrong one reports a false defect.
-CONTAINER_START_RE = re.compile(r"^[ \t]{0,3}(?:[-*+]([ \t]|$)|\d{1,9}[.)]([ \t]|$)|>)")
-# An indented code line is not paragraph text either.
-INDENTED_CODE_RE = re.compile(r"^(?: {4}|\t)")
-# A rule or underline is never itself heading text.
-RULE_ONLY_RE = re.compile(r"^[ \t]{0,3}(?:[-*_=][ \t]*){3,}$")
-
-
-def opens_html_block(line: str) -> bool:
-    """Report whether a line begins an HTML block rather than paragraph text."""
-    if HTML_DECLARATION_RE.match(line):
-        return True
-    match = HTML_TAG_LINE_RE.match(line)
-    return match is not None and match.group(1).lower() in HTML_BLOCK_TAGS
-
-
-HEADING_RE = re.compile(r"^[ \t]{0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$")
-INLINE_LINK_RE = re.compile(r"\]\(([^()]*)\)")
-REFERENCE_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*(\S+)")
-# Full and collapsed reference links and images: [text][label] and [text][].
-# Shortcut references ([text] alone) are deliberately not matched, because
-# ordinary bracketed prose is indistinguishable from them.
-REFERENCE_USAGE_RE = re.compile(r"\[([^\]\n]+)\]\[([^\]\n]*)\]")
-# A definition line whose destination is missing entirely.
-MALFORMED_DEFINITION_RE = re.compile(r"^[ \t]{0,3}\[([^\]]+)\]:[ \t]*$")
-INLINE_CODE_RE = re.compile(r"`+[^`]*`+")
-EMPHASIS_RE = re.compile(r"[*_~]+")
-MARKDOWN_LINK_TEXT_RE = re.compile(r"\[([^\]]*)\]\([^()]*\)")
-SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
-
-
-def open_fence(line: str):
-    """Return (character, length) when a line opens a fenced code block."""
-    match = FENCE_RE.match(line)
-    if match is None:
-        return None
-    run = match.group(1)
-    return run[0], len(run)
-
-
-def is_closing_fence(line: str, character: str, minimum_length: int) -> bool:
-    """Report whether a line closes a fence opened with the given run.
-
-    CommonMark requires a closing fence to use the same character, to be at
-    least as long as the opening run, and to carry nothing after it but
-    whitespace. An info string closes nothing.
-    """
-    match = FENCE_RE.match(line)
-    if match is None:
-        return False
-    run = match.group(1)
-    return run[0] == character and len(run) >= minimum_length and not match.group(2).strip()
-
-
-def front_matter_end(lines) -> int:
-    """Return the last line number of YAML front matter, or 0 when absent.
-
-    This is deliberately conservative, because guessing wrong in the permissive
-    direction silently disables every Markdown check over the skipped span. A
-    document opening with a thematic break must not be mistaken for front
-    matter and have its body ignored.
-
-    Front matter is recognized only when the first line is a delimiter, the
-    line after it is non-blank and reads as a YAML key or comment, and a
-    closing delimiter follows. A thematic break is effectively always followed
-    by a blank line, and ordinary prose does not look like a YAML key, so both
-    fall outside. Anything unterminated is ordinary content.
-    """
-    if len(lines) < 2 or not FRONT_MATTER_RE.match(lines[0]):
-        return 0
-    if not YAML_ENTRY_RE.match(lines[1]):
-        return 0
-    for index in range(1, len(lines)):
-        if FRONT_MATTER_RE.match(lines[index]):
-            return index + 1
-    return 0
-
-
-def normalize_reference_label(label: str) -> str:
-    """Normalize a link label the way CommonMark matches them.
-
-    Labels match case-insensitively with internal whitespace collapsed, so
-    ``[See Also]`` and ``[see   also]`` refer to the same definition.
-    """
-    return " ".join(label.split()).casefold()
-
-
-def heading_slug(text: str) -> str:
-    """Approximate GitHub's heading anchor algorithm."""
-    value = MARKDOWN_LINK_TEXT_RE.sub(r"\1", text)
-    value = INLINE_CODE_RE.sub(lambda match: match.group(0).strip("`"), value)
-    value = EMPHASIS_RE.sub("", value)
-    value = value.strip().lower()
-    value = "".join(
-        character for character in value if character.isalnum() or character in {" ", "-", "_"}
-    )
-    return value.replace(" ", "-")
-
-
-def parse_markdown(content: str):
-    """Return anchors, destinations, defined labels, and label usages.
-
-    Everything inside fenced code is ignored, so examples in documentation do
-    not register as real links, definitions, or usages.
-    """
-    anchors = set()
-    counts = Counter()
-    destinations = []
-    defined_labels = {}
-    usages = []
-    headings = []
-    definition_problems = []
-    fence = None
-    fence_length = 0
-    fence_line = 0
-
-    def record_heading(number: int, level: int, text: str) -> None:
-        headings.append((number, level))
-        base = heading_slug(text)
-        if base:
-            seen = counts[base]
-            counts[base] += 1
-            anchors.add(base if seen == 0 else f"{base}-{seen}")
-
-    source_lines = content.splitlines()
-    metadata_end = front_matter_end(source_lines)
-    # Text of the previous line when it could be a setext heading, else None.
-    setext_candidate = None
-    # An HTML block runs until a blank line, except a comment, which ends on
-    # the line carrying "-->". Lines inside a block are not paragraph text, so
-    # a following "---" belongs to the block rather than heading it.
-    in_html_block = False
-    in_html_comment = False
-    line_is_html = False
-    # A list item or block quote keeps absorbing following lines as lazy
-    # continuations until a blank line, so none of them heads a paragraph.
-    in_container = False
-
-    for number, raw_line in enumerate(source_lines, start=1):
-        if number <= metadata_end:
-            continue
-
-        if fence is not None:
-            if is_closing_fence(raw_line, fence, fence_length):
-                fence = None
-                fence_length = 0
-                fence_line = 0
-            continue
-
-        opened = open_fence(raw_line)
-        if opened is not None:
-            fence, fence_length = opened
-            fence_line = number
-            setext_candidate = None
-            continue
-
-        if setext_candidate is not None and SETEXT_RE.match(raw_line):
-            # The heading belongs to the line above, which carries its text.
-            record_heading(number - 1, 1 if raw_line.strip()[0] == "=" else 2, setext_candidate)
-            setext_candidate = None
-            continue
-
-        # "line_is_html" covers the current line; "in_html_block" says whether a
-        # block continues past it. A one-line comment is both: not paragraph
-        # text itself, but not carrying into the line below either.
-        if not raw_line.strip():
-            line_is_html = False
-            in_html_block = False
-            in_html_comment = False
-            in_container = False
-        elif in_html_comment:
-            line_is_html = True
-            if "-->" in raw_line:
-                in_html_comment = False
-                in_html_block = False
-        elif in_html_block:
-            line_is_html = True
-        elif HTML_COMMENT_OPEN_RE.match(raw_line):
-            line_is_html = True
-            if "-->" not in raw_line:
-                in_html_block = True
-                in_html_comment = True
-        elif opens_html_block(raw_line):
-            line_is_html = True
-            in_html_block = True
-        else:
-            line_is_html = False
-
-        if CONTAINER_START_RE.match(raw_line):
-            in_container = True
-
-        heading_match = None if line_is_html else HEADING_RE.match(raw_line)
-        if heading_match:
-            record_heading(number, len(heading_match.group(1)), heading_match.group(2))
-            setext_candidate = None
-        elif (
-            raw_line.strip()
-            and not line_is_html
-            and not in_container
-            # Indented code only begins after a blank line; directly under a
-            # paragraph the same line lazily continues it.
-            and not (INDENTED_CODE_RE.match(raw_line) and setext_candidate is None)
-            and not RULE_ONLY_RE.match(raw_line)
-        ):
-            setext_candidate = raw_line.strip()
-        else:
-            setext_candidate = None
-
-        line = INLINE_CODE_RE.sub("", raw_line)
-        for match in INLINE_LINK_RE.finditer(line):
-            destinations.append((number, match.group(1)))
-        definition = REFERENCE_DEFINITION_RE.match(line)
-        if definition:
-            label = definition.group(1)
-            normalized = normalize_reference_label(label)
-            if normalized in defined_labels:
-                definition_problems.append(
-                    (number, f"duplicate reference-style link definition {label!r}")
-                )
-            else:
-                defined_labels[normalized] = number
-            destinations.append((number, definition.group(2)))
-            continue
-
-        malformed = MALFORMED_DEFINITION_RE.match(line)
-        if malformed:
-            definition_problems.append(
-                (
-                    number,
-                    f"reference-style link definition {malformed.group(1)!r} has no destination",
-                )
-            )
-            continue
-
-        for match in REFERENCE_USAGE_RE.finditer(line):
-            # A collapsed reference, [text][], takes its label from the text.
-            label = match.group(2) or match.group(1)
-            usages.append((number, label))
-    if fence is not None:
-        definition_problems.append((fence_line, "fenced code block is not closed"))
-    return anchors, destinations, defined_labels, usages, headings, definition_problems
-
-
-def strip_inline_code(line: str) -> str:
-    """Remove inline code spans so prose checks ignore code samples."""
-    return INLINE_CODE_RE.sub("", line)
-
-
-def markdown_without_fenced_code(content: str) -> str:
-    """Blank out fenced code blocks while preserving line numbering.
-
-    Exposed for scripts/validate_local.py, whose checks frequently need to read
-    Markdown prose without matching text inside code fences.
-    """
-    lines = []
-    fence = None
-    fence_length = 0
-    for raw_line in content.splitlines():
-        if fence is not None:
-            if is_closing_fence(raw_line, fence, fence_length):
-                fence = None
-                fence_length = 0
-            lines.append("")
-            continue
-        opened = open_fence(raw_line)
-        if opened is not None:
-            fence, fence_length = opened
-            lines.append("")
-            continue
-        lines.append(raw_line)
-    trailing = "\n" if content.endswith("\n") else ""
-    return "\n".join(lines) + trailing
-
-
-def parse_destination(raw_destination: str) -> str:
-    """Strip angle brackets and any trailing link title."""
-    destination = raw_destination.strip()
-    if destination.startswith("<") and destination.endswith(">"):
-        return destination[1:-1].strip()
-    for quote in ('"', "'"):
-        index = destination.find(f" {quote}")
-        if index != -1:
-            destination = destination[:index]
-            break
-    return destination.strip()
-
-
-def is_external(destination: str) -> bool:
-    return destination.startswith("//") or bool(SCHEME_RE.match(destination))
-
-
 class RepositoryValidator:
     """Run the enabled mechanical checks over one repository."""
 
@@ -725,7 +409,7 @@ class RepositoryValidator:
         self.findings = []
         self.files = ()
         self.text = {}
-        self.markdown = {}
+        self.content = {}
 
     def _add(self, path: str, reason: str, check: str, line: int = 0) -> None:
         self.findings.append(Finding(path, line, reason, check))
@@ -742,8 +426,6 @@ class RepositoryValidator:
         self._check_required_files()
         self._check_credential_files()
         self._check_path_names()
-        self._check_markdown_links()
-        self._check_heading_hierarchy()
         self._check_structure_snapshot()
         self._run_local_checks()
         return sorted(set(self.findings))
@@ -795,9 +477,10 @@ class RepositoryValidator:
 
     def _read_text_files(self) -> None:
         globs = list(self.config["text-encoding"].get("globs", ()))
-        globs.extend(self.config["markdown-links"].get("globs", ()))
-        globs.extend(self.config["markdown-headings"].get("globs", ()))
-        globs.append(self.config["structure-snapshot"].get("path", STRUCTURE_SNAPSHOT_PATH))
+        if self._enabled("final-newline"):
+            globs.extend(self.config["final-newline"].get("globs", ()))
+        if self._enabled("structure-snapshot"):
+            globs.append(self.config["structure-snapshot"]["path"])
         report = self._enabled("text-encoding")
         for relative_path in self.files:
             if not matches_any(relative_path, globs):
@@ -808,27 +491,27 @@ class RepositoryValidator:
             try:
                 data = path.read_bytes()
             except OSError as error:
-                if report:
-                    self._add(
-                        relative_path,
-                        f"file could not be read ({error.strerror or error})",
-                        "text-encoding",
-                    )
+                self._add(
+                    relative_path,
+                    f"file could not be read ({error.strerror or error})",
+                    "file-read",
+                )
                 continue
+            self.content[relative_path] = data
             try:
                 self.text[relative_path] = data.decode("utf-8")
             except UnicodeDecodeError as error:
-                if report:
+                if report and matches_any(relative_path, self.config["text-encoding"]["globs"]):
                     self._add(relative_path, f"file is not valid UTF-8 ({error})", "text-encoding")
 
     def _check_final_newline(self) -> None:
         if not self._enabled("final-newline"):
             return
         globs = self.config["final-newline"].get("globs", ())
-        for relative_path, content in sorted(self.text.items()):
+        for relative_path, content in sorted(self.content.items()):
             if not matches_any(relative_path, globs):
                 continue
-            if content and not content.endswith("\n"):
+            if content and not content.endswith(b"\n"):
                 self._add(relative_path, "text file must end with a newline", "final-newline")
 
     def _check_required_files(self) -> None:
@@ -939,133 +622,6 @@ class RepositoryValidator:
                             )
                     break
 
-    def _check_markdown_links(self) -> None:
-        if not self._enabled("markdown-links"):
-            return
-        globs = self.config["markdown-links"].get("globs", ())
-        for relative_path, content in sorted(self.text.items()):
-            if matches_any(relative_path, globs):
-                self.markdown[relative_path] = parse_markdown(content)
-
-        self._check_reference_labels()
-
-        present = set(self.files)
-        for relative_path, (_, destinations, _, _, _, _) in sorted(self.markdown.items()):
-            directory = relative_path.rsplit("/", 1)[0] if "/" in relative_path else ""
-            for line, raw_destination in destinations:
-                destination = parse_destination(raw_destination)
-                if not destination or is_external(destination) or destination.startswith("#"):
-                    if destination.startswith("#"):
-                        self._verify_anchor(relative_path, relative_path, destination[1:], line)
-                    continue
-
-                target, _, fragment = destination.partition("#")
-                target = unquote(target)
-                if target.startswith("/"):
-                    self._add(
-                        relative_path,
-                        f"link destination {destination!r} is repository-absolute",
-                        "markdown-links",
-                        line,
-                    )
-                    continue
-                resolved = os.path.normpath(os.path.join(directory, target)).replace(os.sep, "/")
-                if resolved.startswith(".."):
-                    self._add(
-                        relative_path,
-                        f"link destination {destination!r} escapes the repository",
-                        "markdown-links",
-                        line,
-                    )
-                    continue
-                if resolved in present:
-                    if fragment:
-                        self._verify_anchor(relative_path, resolved, fragment, line)
-                    continue
-                if any(existing.startswith(f"{resolved}/") for existing in present):
-                    continue
-                self._add(
-                    relative_path,
-                    f"link destination {destination!r} does not exist",
-                    "markdown-links",
-                    line,
-                )
-
-    def _check_reference_labels(self) -> None:
-        """Report unresolved usages, and definitions that cannot be relied on."""
-        for relative_path, parsed in sorted(self.markdown.items()):
-            _, _, defined_labels, usages, _, definition_problems = parsed
-            for line, reason in definition_problems:
-                self._add(relative_path, reason, "markdown-links", line)
-            for line, label in usages:
-                if normalize_reference_label(label) not in defined_labels:
-                    self._add(
-                        relative_path,
-                        f"reference-style link label {label!r} has no matching definition",
-                        "markdown-links",
-                        line,
-                    )
-
-    def _verify_anchor(self, source: str, target: str, fragment: str, line: int) -> None:
-        parsed = self.markdown.get(target)
-        if parsed is None:
-            return
-        anchors = parsed[0]
-        if unquote(fragment).lower() not in anchors:
-            self._add(
-                source,
-                f"link anchor '#{fragment}' does not match a heading in {target}",
-                "markdown-links",
-                line,
-            )
-
-    def _check_heading_hierarchy(self) -> None:
-        """Report headings that skip a level, such as H1 followed by H4.
-
-        A skipped level breaks document outline and assistive-technology
-        navigation. The first heading in a document may be any level; only
-        increases of more than one level are reported.
-        """
-        if not self._enabled("markdown-headings"):
-            return
-        globs = self.config["markdown-headings"].get("globs", ())
-        for relative_path, content in sorted(self.text.items()):
-            if not matches_any(relative_path, globs):
-                continue
-            parsed = self.markdown.get(relative_path)
-            headings = (parsed or parse_markdown(content))[4]
-            if not headings:
-                continue
-
-            first_line, first_level = headings[0]
-            if first_level != 1:
-                self._add(
-                    relative_path,
-                    f"first heading must be H1, found H{first_level}",
-                    "markdown-headings",
-                    first_line,
-                )
-
-            top_level_headings = [line for line, level in headings if level == 1]
-            if len(top_level_headings) != 1:
-                self._add(
-                    relative_path,
-                    f"document must contain exactly one H1; found {len(top_level_headings)}",
-                    "markdown-headings",
-                    top_level_headings[1] if len(top_level_headings) > 1 else 0,
-                )
-
-            previous = None
-            for line, level in headings:
-                if previous is not None and level > previous + 1:
-                    self._add(
-                        relative_path,
-                        f"heading level skips from H{previous} to H{level}",
-                        "markdown-headings",
-                        line,
-                    )
-                previous = level
-
     def _check_structure_snapshot(self) -> None:
         if not self._enabled("structure-snapshot"):
             return
@@ -1130,14 +686,21 @@ class RepositoryValidator:
         for result in results:
             try:
                 path, line, reason = result
+                if (
+                    not isinstance(path, str)
+                    or not isinstance(reason, str)
+                    or type(line) is not int
+                    or line < 0
+                ):
+                    raise ValueError("invalid finding fields")
             except (TypeError, ValueError):
                 self._add(
                     LOCAL_CHECK_PATH,
-                    "local checks must yield (path, line, reason) tuples",
+                    "local checks must yield (str path, nonnegative int line, str reason) tuples",
                     "local",
                 )
                 continue
-            self._add(str(path), str(reason), "local", int(line))
+            self._add(path, reason, "local", line)
 
 
 def validate_repository(root: Path):

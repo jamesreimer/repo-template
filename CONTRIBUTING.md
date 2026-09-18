@@ -40,6 +40,7 @@ check locally:
 
 ```bash
 markdownlint-cli2
+python3 scripts/check_markdown_links.py
 ```
 
 ```bash
@@ -63,9 +64,10 @@ Actions in `.github/workflows/validate.yml` are pinned by commit SHA, and
 Dependabot updates those references monthly.
 
 It does not update the tool versions passed to them. `ruff-action` and the
-`actionlint` action take a `version:` input naming the tool to run, and those
-strings are invisible to Dependabot's `github-actions` ecosystem. Without
-attention they stay frozen while the actions around them move.
+`actionlint` action take a `version:` input naming the tool to run; Lychee uses
+`lycheeVersion:`. The Markdown linter version is pinned in its installation
+command. These tool versions are invisible to Dependabot's `github-actions`
+ecosystem. Without attention they stay frozen while the actions around them move.
 
 Review them when a Dependabot pull request touches the surrounding action, or
 when a lint failure suggests the pinned version has fallen behind. Bump the
@@ -73,12 +75,37 @@ when a lint failure suggests the pinned version has fallen behind. Bump the
 passes. No automation is provided, because a tool version that changes without
 review is exactly what pinning exists to prevent.
 
+## Who checks Markdown
+
+Markdown is linted by `markdownlint-cli2`, using `.markdownlint-cli2.jsonc`.
+It checks heading structure, same-file fragments, reference labels and
+definitions, and the selected formatting rules. Run it alongside the Python
+checks when Markdown changes; it also runs in CI.
+
+`python3 scripts/check_markdown_links.py` uses Lychee 0.24.2 to check local
+link targets and fragments offline. It selects Markdown files from the same
+Git-aware working-tree inventory as the Python validator and rejects links
+that resolve outside the repository before checking destinations. Absolute
+link paths are rejected by Lychee; no website root is configured. External
+URLs are not requested. Markdown links, images, and embedded HTML links are
+handled by Lychee's parsers, including code and comment context.
+
+An unclosed fence is valid CommonMark and no longer triggers a separate
+custom rule. Undefined full/collapsed reference uses are diagnosed by MD052;
+unused or duplicate definitions by MD053. The template no longer tries to
+infer malformed definitions from ordinary bracketed prose.
+
 ## Tooling rule
 
-Repository tooling is Python, standard library only, targeting the version
-floor in [README.md](README.md). Because a newer local interpreter will not
-reject older syntax, CI pins the floor explicitly. Use shell only where the
-shell is itself the interface.
+Repository-owned scripts use Python's standard library. Markdown linting and
+link validation use maintained external tools instead of a handwritten parser.
+Dependencies are justified by demonstrated correctness and maintenance needs;
+the absence of dependencies is not an overriding design requirement.
+
+Install `markdownlint-cli2@0.23.2` (Node.js 22 or later) and Lychee 0.24.2 before
+running the full suite. CI pins both tool versions. The link-check command
+fails with installation guidance if Lychee is missing. Python unit tests skip external-tool integration cases when a tool is
+unavailable; passing those tests alone does not establish Markdown coverage.
 
 ## Configuration reference
 
@@ -92,8 +119,6 @@ comments. An unknown check or option is an error rather than a silent no-op.
 | `text-encoding` | on | `globs` |
 | `final-newline` | on | `globs` |
 | `required-files` | on, empty | `paths` |
-| `markdown-links` | on | `globs` |
-| `markdown-headings` | on | `globs` |
 | `credential-files` | on | `patterns`, `allow` |
 | `path-names` | **off** | `pattern`, `scope`, `exempt`, `rules` |
 | `structure-snapshot` | **off** | `path` |
@@ -158,16 +183,14 @@ present. It is imported as an ordinary module, so `dataclasses`, `typing`, and
 `from __future__ import annotations` all work as usual:
 
 ```python
-from validate import markdown_without_fenced_code
-
-
 def extra_checks(context):
     # context.root, context.files, context.text
     return [("path/to/file.md", 0, "what is wrong")]
 ```
 
-Return `(path, line, reason)` tuples. A local check that raises is reported as
-a finding rather than aborting the run.
+Return `(path, line, reason)` tuples with string paths and reasons and a
+nonnegative integer line number (0 means the whole file). Exceptions and
+malformed results are reported as findings rather than aborting the run.
 
 Do not fork `scripts/validate.py` to add a repository-specific check. If a
 check cannot be expressed through configuration or a local module, that is a
@@ -176,10 +199,11 @@ defect in this template and should be fixed here.
 ## Scope of automated validation
 
 Validation checks mechanical invariants: encoding, newlines, junk artifacts,
-required files, internal link resolution including reference-style label and
-definition integrity, fenced code block balance, heading hierarchy including a
-single leading H1, credential-shaped filenames, committed symbolic links, and
-optionally path naming and the structure snapshot.
+required files, credential-shaped filenames, symbolic links, and optionally
+path naming and the structure snapshot. The validator inspects the current
+working tree, including unignored new files; it does not validate the Git index
+as a separate snapshot. Markdown linting is a separate command as described
+above.
 
 It deliberately does not check scope, boundaries, proportionality, or prose
 quality. Those remain human and AI review responsibilities.

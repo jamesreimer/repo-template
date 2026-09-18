@@ -30,12 +30,23 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.9"
-      - name: Lint Markdown
-        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+      - name: Set up Node for Markdown linting
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          globs: |
-            **/*.md
-            !.git/**
+          node-version: "24"
+      - name: Install Markdown linter
+        run: npm install --global --ignore-scripts markdownlint-cli2@0.23.2
+      - name: Lint Markdown
+        run: markdownlint-cli2
+      - name: Set up Lychee and check local links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
+        with:
+          lycheeVersion: v0.24.2
+          args: --offline --include-fragments --no-progress README.md
+          output: ${{ runner.temp }}/lychee-report.md
+          token: ""
+      - name: Check repository link boundaries and targets
+        run: python3 scripts/check_markdown_links.py
       # The version inputs below pin the tools themselves. Dependabot updates
       # the action SHAs but not these strings; see CONTRIBUTING.md.
       - name: Lint Python
