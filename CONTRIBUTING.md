@@ -32,10 +32,14 @@ in `.markdownlint-cli2.jsonc`; Python rules live in `ruff.toml`. Use the tools'
 native configuration when project requirements change. Make exclusions explicit
 and explain substantive coverage reductions in the pull request.
 
-Lychee checks Markdown links offline, including fragments. Its native config
-and ignore files are supported; changes to them are changes to validation
-coverage. Absolute website routes, generated destinations, and external network
-checks need a project-specific decision. Markdown parsing belongs to the
+Linkinator checks Markdown links offline, including fragments. It runs as a
+fresh process through `tools/check-links.mjs`, with exact dependencies in
+`package.json` and `package-lock.json`. A startup probe verifies that front matter
+is excluded by the renderer actually used by Linkinator; an ineffective hook
+stops validation before repository content is read. External HTTP/HTTPS links
+are skipped, including redirects leaving the local serving origin. There is no
+required remote-link check. Absolute website routes and generated destinations
+need a project-specific decision. Markdown parsing belongs to the
 maintained tools. The local `fenced-code-closed` authoring rule consumes
 markdownlint's micromark tokens to require explicit fence closure; it neither
 parses Markdown independently nor chooses a closing position automatically.
@@ -60,11 +64,18 @@ Review updates using:
 ```
 
 Review the resulting versions and configuration compatibility, then run the
-full suite. `requirements-dev.txt` pins the runner. Lychee is a system dependency:
-update the version in the setup documentation and workflow together, and test
-it locally. Updating its hook revision alone does not update the installed
-binary. The hook uses the installed binary directly, without a download wrapper.
+full suite. `requirements-dev.txt` pins the runner. npm owns the link checker,
+its explicit Marked dependency, the maintained front-matter stack, and the
+Markdownlint dependency used by its regression tests. Use `npm ci --ignore-scripts`
+locally and in CI. The lock preserves the full dependency resolution;
+pre-commit `additional_dependencies` cannot provide that transitive lock.
+The startup probe is still required: correctness must not depend on hoisting.
+Update pins and lock together, then run the regression suite and ordinary checks.
+Keep the test Markdownlint version aligned with its existing pre-commit hook.
 
-Dependabot proposes GitHub Actions and Python requirements updates monthly.
-It does not update the workflow's Lychee version input or the hook revisions.
+Dependabot proposes GitHub Actions, Python requirements, and npm dependency
+updates monthly. Hook revisions remain covered by `pre-commit autoupdate`.
 Actions are pinned by commit as well; review version inputs when updating them.
+
+The durable link regression contract and test controls are documented in
+[tests/link-validation/README.md](tests/link-validation/README.md).

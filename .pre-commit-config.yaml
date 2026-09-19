@@ -33,12 +33,19 @@ repos:
         always_run: true
         pass_filenames: false
 
-  - repo: https://github.com/lycheeverse/lychee
-    rev: 2bba271688c1abb1503097a064e6c3bc1d1b6a9b # lychee-v0.24.2
+  - repo: local
     hooks:
-      - id: lychee-system
+      - id: linkinator
+        name: Check local Markdown links
+        language: system
+        entry: node tools/check-links.mjs
         types: [markdown]
-        args: [--offline, --include-fragments, --no-progress]
+      - id: test-link-validation
+        name: Test local link validation
+        language: system
+        entry: npm run test:links
+        always_run: true
+        pass_filenames: false
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: 2eeb5678de71a00c0902cbda7105d328432f72cb # v0.16.8
