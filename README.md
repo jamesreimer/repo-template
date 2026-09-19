@@ -19,10 +19,10 @@ for your project's own content deliberately.
 
 ## Run checks
 
-Install Python 3.10 or later and [Lychee 0.24.2](https://github.com/lycheeverse/lychee/releases/tag/lychee-v0.24.2),
-with `lychee` available on `PATH`. Then:
+Install Python 3.10 or later and Node.js 24.18.1 (including npm). Then:
 
 ```sh
+npm ci --ignore-scripts
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/pre-commit run --all-files --show-diff-on-failure
@@ -53,7 +53,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance and validation details.
 | Case-colliding paths and broken symlinks | pre-commit-hooks |
 | Recognizable private-key content | pre-commit-hooks |
 | Selected Markdown structure, syntax, and reference rules | markdownlint-cli2 |
-| Local Markdown link destinations and fragments | Lychee |
+| Local Markdown link destinations and fragments | Linkinator |
 | Python lint and formatting, when Python files are present | Ruff |
 | GitHub Actions workflow syntax and expressions | actionlint |
 

@@ -1,0 +1,966 @@
+{
+  "identity": "New split-validator suite v1; no byte continuity with historical 53 cases",
+  "cases": [
+    {
+      "name": "ordinary-markdown",
+      "files": {
+        "source.md": "\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "ordinary-missing-file",
+      "files": {
+        "source.md": "# Source\n\n[bad](missing.md)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "ordinary-thematic-break",
+      "files": {
+        "source.md": "---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-mapping",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-quoted",
+      "files": {
+        "source.md": "---\ntitle: \"[bad](missing.md)\"\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-list",
+      "files": {
+        "source.md": "---\n- \"[bad](missing.md)\"\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-scalar",
+      "files": {
+        "source.md": "---\n\"[bad](missing.md)\"\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-empty",
+      "files": {
+        "source.md": "---\n\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-comment",
+      "files": {
+        "source.md": "---\n# Metadata only\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-block-scalar",
+      "files": {
+        "source.md": "---\ndescription: |\n  [bad](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-fence-valid-body",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-fence-missing-file",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n[bad](missing.md)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-fence-html-missing-file",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n<a href=\"missing.md\">bad</a>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "body-code-closed",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n\n```markdown\n[ignored](missing.md)\n```\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "body-code-unclosed",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n\n```markdown\n[ignored](missing.md)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": false,
+      "expected_external": true,
+      "owner": "markdownlint",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "yaml-malformed",
+      "files": {
+        "source.md": "---\ntitle: [unterminated\n---\n\n# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "yaml-duplicate",
+      "files": {
+        "source.md": "---\ntitle: one\ntitle: two\n---\n\n# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "yaml-alias",
+      "files": {
+        "source.md": "---\ntitle: *missing\n---\n\n# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "yaml-unknown-tag",
+      "files": {
+        "source.md": "---\ntitle: !custom data\n---\n\n# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "yaml-python-tag",
+      "files": {
+        "source.md": "---\ntitle: !!python/object:Thing {}\n---\n\n# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "yaml-fence-bypass-malformed",
+      "files": {
+        "source.md": "---\n```\n---\n\n[bad](missing.md)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "adjacent-heading",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "adjacent-link",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n[go](target.md)\n",
+        "target.md": "# Target\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "adjacent-body-fence",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n```\ntext\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": false,
+      "expected_external": true,
+      "owner": "markdownlint",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "crlf-missing-file",
+      "files": {
+        "source.md": "---\r\ndescription: |\r\n  ```markdown\r\n  [metadata](missing.md)\r\n---\r\n\r\n[bad](missing.md)\r\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "eof-open-fence",
+      "files": {
+        "source.md": "---\ntitle: Test\n---\n\n```"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": false,
+      "expected_external": true,
+      "owner": "markdownlint",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "metadata-only-eof",
+      "files": {
+        "source.md": "---\ntitle: Test\n---"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "heading-same",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "heading-self",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](source.md#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "heading-cross-indirect",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](target.md#target)\n",
+        "target.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "heading-cross-selected",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](target.md#target)\n",
+        "target.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md",
+        "target.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "cross-missing-fragment",
+      "files": {
+        "source.md": "[go](target.md#absent)\n",
+        "target.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "cross-metadata-phantom",
+      "files": {
+        "source.md": "[go](target.md#ghost)\n",
+        "target.md": "---\n# Ghost\n---\n\n# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "same-metadata-phantom",
+      "files": {
+        "source.md": "---\n# Ghost\n---\n\n[go](#ghost)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": false,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "self-metadata-phantom",
+      "files": {
+        "source.md": "---\n# Ghost\n---\n\n[go](source.md#ghost)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "cross-malformed-metadata",
+      "files": {
+        "source.md": "[go](target.md#target)\n",
+        "target.md": "---\na: [broken\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "html-anchor-id",
+      "files": {
+        "source.md": "<a id=\"target\"></a>\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "html-anchor-name",
+      "files": {
+        "source.md": "<a name=\"target\"></a>\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "html-anchor-missing",
+      "files": {
+        "source.md": "<a id=\"target\"></a>\n\n[go](target.md#missing)\n",
+        "target.md": "# Body\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "blockquote-missing-file",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n> [go](missing.md)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "list-missing-file",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n- [go](missing.md)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "nested-space-file",
+      "files": {
+        "source.md": "[go](<nested folder/target file.md#target>)\n",
+        "nested folder/target file.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n# Target\n\n[go](#target)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "external-offline",
+      "files": {
+        "source.md": "[go](https://example.invalid/unavailable)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "external",
+      "reference": "front-matter-report",
+      "offline": true
+    },
+    {
+      "name": "html-div-same",
+      "files": {
+        "source.md": "<div id=\"explicit\">Label</div>\n\n[go](#explicit)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "html-div-cross",
+      "files": {
+        "source.md": "[go](target.md#explicit)\n",
+        "target.md": "<div id=\"explicit\">Label</div>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "html-span-same",
+      "files": {
+        "source.md": "<span id=\"explicit\">Label</span>\n\n[go](#explicit)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "html-span-cross",
+      "files": {
+        "source.md": "[go](target.md#explicit)\n",
+        "target.md": "<span id=\"explicit\">Label</span>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "html-h2-same",
+      "files": {
+        "source.md": "<h2 id=\"explicit\">Label</h2>\n\n[go](#explicit)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "html-h2-cross",
+      "files": {
+        "source.md": "[go](target.md#explicit)\n",
+        "target.md": "<h2 id=\"explicit\">Label</h2>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "mixed-a-same",
+      "files": {
+        "source.md": "<a id=\"MixedCase\">Label</a>\n\n[go](#MixedCase)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "mixed-a-cross",
+      "files": {
+        "source.md": "[go](target.md#MixedCase)\n",
+        "target.md": "<a id=\"MixedCase\">Label</a>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "mixed-div-same",
+      "files": {
+        "source.md": "<div id=\"MixedCase\">Label</div>\n\n[go](#MixedCase)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "mixed-div-cross",
+      "files": {
+        "source.md": "[go](target.md#MixedCase)\n",
+        "target.md": "<div id=\"MixedCase\">Label</div>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "dual-id-same",
+      "files": {
+        "source.md": "<a id=\"identifier\" name=\"legacy\">Label</a>\n\n[go](#identifier)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "dual-id-cross",
+      "files": {
+        "source.md": "[go](target.md#identifier)\n",
+        "target.md": "<a id=\"identifier\" name=\"legacy\">Label</a>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "dual-name-same",
+      "files": {
+        "source.md": "<a id=\"identifier\" name=\"legacy\">Label</a>\n\n[go](#legacy)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": false,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "dual-name-cross",
+      "files": {
+        "source.md": "[go](target.md#legacy)\n",
+        "target.md": "<a id=\"identifier\" name=\"legacy\">Label</a>\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "local",
+      "reference": "consistency-review",
+      "offline": true
+    },
+    {
+      "name": "http-good",
+      "files": {
+        "source.md": "[go](http://SERVER/ok)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "external",
+      "reference": "split-responsibility-requirement",
+      "offline": false
+    },
+    {
+      "name": "http-bad",
+      "files": {
+        "source.md": "[go](http://SERVER/missing)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": false,
+      "owner": "external",
+      "reference": "split-responsibility-requirement",
+      "offline": false
+    },
+    {
+      "name": "http-metadata-hidden",
+      "files": {
+        "source.md": "---\ntitle: \"http://SERVER/missing\"\n---\n\n[go](http://SERVER/ok)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "external",
+      "reference": "split-responsibility-requirement",
+      "offline": false
+    },
+    {
+      "name": "http-after-metadata-fence",
+      "files": {
+        "source.md": "---\ndescription: |\n  ```markdown\n  [metadata](missing.md)\n---\n\n[go](http://SERVER/missing)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": false,
+      "owner": "external",
+      "reference": "split-responsibility-requirement",
+      "offline": false
+    },
+    {
+      "name": "http-and-local-bad",
+      "files": {
+        "source.md": "[remote](http://SERVER/ok)\n\n[local](missing.md#absent)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": false,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "combination",
+      "reference": "split-responsibility-requirement",
+      "offline": false
+    },
+    {
+      "name": "https-reachability",
+      "files": {
+        "source.md": "[go](https://www.rust-lang.org/)\n"
+      },
+      "inputs": [
+        "source.md"
+      ],
+      "expected_local": true,
+      "expected_lint": true,
+      "expected_external": true,
+      "owner": "external",
+      "reference": "split-responsibility-requirement",
+      "offline": false
+    }
+  ]
+}
