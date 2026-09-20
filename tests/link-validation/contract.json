@@ -511,7 +511,7 @@
         "source.md"
       ],
       "expected_local": false,
-      "expected_lint": false,
+      "expected_lint": true,
       "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
@@ -850,7 +850,7 @@
         "source.md"
       ],
       "expected_local": true,
-      "expected_lint": false,
+      "expected_lint": true,
       "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",

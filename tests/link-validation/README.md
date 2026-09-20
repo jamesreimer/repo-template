@@ -5,17 +5,21 @@ run also runs this suite. Tests materialize synthetic fixture strings in tempora
 directories and verify their bytes after validation; no repository content is
 rewritten or mirrored.
 
-`contract.json` preserves the 63-case retained scratch qualification verbatim
-(SHA-256 `320f9cc2b31fc0890e2f62b3b9745fa7807d67253080cc1cd80cbca2b4740795`).
+`contract.json` retains all 63 cases from the scratch qualification, with the
+two authoring expectations updated for sole Linkinator fragment ownership
+(SHA-256 `08b3b7056fa2eee013029b1917428f6110946dc94b2c703afa4b63c0dd828c6c`).
 It does not claim continuity with the vanished historical 53-case suite.
 The current Planning decision makes every case offline: `expected_local` controls
 Linkinator acceptance, while former `expected_external` values describe historical
 online qualification only. Every discovered HTTP/HTTPS URL must be skipped.
 
-All existing authoring expectations remain unchanged. In `dual-name-same`,
-Linkinator correctly accepts the name destination while Markdownlint MD051
-rejects it. This is the separately owned D2 control, not a D1 failure. The test
-asserts that disagreement rather than fixing it or counting it as D1 rejection.
+Linkinator is the sole owner of local fragment validity. Markdownlint retains
+Markdown authoring rules and does not independently validate fragments: only
+MD051 is disabled. The `dual-name-same` fixture remains positive coverage for
+Linkinator accepting the legacy name on an anchor with both `id` and `name`.
+The `same-metadata-phantom` fixture remains negative coverage for Linkinator
+rejecting a phantom metadata anchor through front-matter isolation. Both now
+expect Markdownlint acceptance; their local-link expectations are unchanged.
 
 Additional controls cover single-key metadata, native false-green behavior,
 disabled hooks, separate Marked instances, duplicate registration, independent
