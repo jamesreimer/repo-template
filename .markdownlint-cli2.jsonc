@@ -1,5 +1,6 @@
 // File selection belongs to pre-commit. These are editable baseline rules.
-// Linkinator checks cross-file destinations; markdownlint owns Markdown rules.
+// Linkinator owns local fragment validity; Markdownlint owns Markdown authoring
+// rules and does not independently validate fragments.
 {
   "customRules": ["./markdownlint-rules/fenced-code-closed.cjs"],
   "config": {
@@ -21,7 +22,7 @@
     "MD038": true,
     "MD039": true,
     "MD042": true,
-    "MD051": true,
+    "MD051": false,
     "MD052": true,
     "MD053": true,
     "MD055": true,

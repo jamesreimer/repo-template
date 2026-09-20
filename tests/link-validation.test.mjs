@@ -12,7 +12,7 @@ const cli = join(root, 'tools/check-links.mjs');
 const control = pathToFileURL(join(root, 'tests/link-validation/import-control.mjs')).href;
 const contractBytes = readFileSync(join(root, 'tests/link-validation/contract.json'));
 assert.equal(createHash('sha256').update(contractBytes).digest('hex'),
-  '320f9cc2b31fc0890e2f62b3b9745fa7807d67253080cc1cd80cbca2b4740795');
+  '08b3b7056fa2eee013029b1917428f6110946dc94b2c703afa4b63c0dd828c6c');
 const contract = JSON.parse(contractBytes);
 const lintPackage = JSON.parse(readFileSync(join(root, 'node_modules/markdownlint-cli2/package.json')));
 const lint = join(root, 'node_modules/markdownlint-cli2', lintPackage.bin['markdownlint-cli2']);
@@ -56,8 +56,6 @@ for (const c of contract.cases) {
     if (c.owner === 'markdownlint') assert.match(authoring.stderr, /MDX001/);
     if (c.name === 'dual-name-same') {
       assert.equal(result.status, 0);
-      assert.match(authoring.stderr, /MD051/);
-      t.diagnostic('D2 control: Linkinator accepts; unchanged MD051 rejects. Not a D1 failure.');
     }
     Object.keys(c.files).forEach((f, index) => assert.deepEqual(readFileSync(join(dir, f)), before[index]));
   });
