@@ -1,4 +1,4 @@
-# Agent Guidance
+# Contributor Guidance
 
 ## Authority and scope
 
