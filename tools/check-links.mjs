@@ -10,6 +10,8 @@ import {observations} from './link-frontmatter.mjs';
 function offlineOptions(root, paths) {
   let origin;
   return {path: paths, serverRoot: root, markdown: true, checkFragments: true,
+    // Repository directories need not contain a website index.html.
+    directoryListing: true,
     timeout: 10000, retry: false, retryErrors: false,
     linksToSkip(url) {
       origin ??= new URL(url).origin;

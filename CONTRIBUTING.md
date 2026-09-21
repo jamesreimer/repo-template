@@ -45,6 +45,12 @@ markdownlint's micromark tokens to require explicit fence closure; it neither
 parses Markdown independently nor chooses a closing position automatically.
 Working symbolic links are allowed.
 
+Directory destinations use Linkinator's native directory listings and do not
+require an `index.html`. Missing directories still fail. If an `index.html` is
+present, Linkinator checks its fragments; generated listings do not expose an
+HTML fragment contract, so fragments on those listings are not validated.
+Use an explicit Markdown or HTML file link when a fragment must be checked.
+
 When changing a check or its scope, verify both that representative defects fail
 and that representative valid files pass in an isolated Git repository. Include
 new-file selection and the full CI command where relevant. The suite includes

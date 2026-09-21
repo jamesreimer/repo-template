@@ -110,3 +110,87 @@ test('native hook-disabled control exposes phantom-anchor false green', t => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.equal(JSON.parse(result.stdout).passed, true);
 });
+
+// Keep directory coverage separate from the immutable historical D1 corpus.
+const directoryCases = [
+  {name: 'relative directory', target: 'docs'},
+  {name: 'trailing slash', target: 'docs/'},
+  {name: 'empty directory', target: 'empty/'},
+  {name: 'nested directory', target: 'docs/nested/'},
+  {name: 'parent-relative directory', input: 'docs/source.md', target: '../docs/nested'},
+  {name: 'dot-segment normalization', target: 'docs/../docs/nested/'},
+  {name: 'encoded space', target: 'space%20dir/'},
+  {name: 'literal space', target: '<space dir/>'},
+  {name: 'encoded unicode', target: 'caf%C3%A9/'},
+  {name: 'query preserved through redirect', target: 'docs?view=tree'},
+  {name: 'missing directory', target: 'absent', fails: true},
+  {name: 'missing directory with slash', target: 'absent/', fails: true},
+  {name: 'missing nested directory', target: 'docs/absent/', fails: true},
+  {name: 'file with trailing slash', target: 'docs/file.md/', fails: true},
+  {name: 'file fragment', target: 'docs/file.md#file'},
+  {name: 'missing file fragment', target: 'docs/file.md#absent', fails: true},
+  {name: 'fragment only', target: '#source'},
+  {name: 'missing fragment only', target: '#absent', fails: true},
+  {name: 'index fragment', target: 'indexed/#present'},
+  {name: 'missing index fragment', target: 'indexed/#absent', fails: true},
+  // Native generated listings have no HTML content type and no fragment contract.
+  {name: 'listing fragment is not validated by native Linkinator', target: 'docs/#absent'},
+];
+for (const c of directoryCases) {
+  test(`directory contract: ${c.name}`, t => {
+    const input = c.input || 'source.md';
+    const files = {
+      'docs/file.md': '# File\n',
+      'docs/nested/keep.txt': 'nested\n',
+      'space dir/keep.txt': 'space\n',
+      'café/keep.txt': 'unicode\n',
+      'indexed/index.html': '<h1 id="present">Present</h1>\n',
+      [input]: `# Source\n\n[directory case](${c.target})\n\n[external](https://example.invalid/)\n`,
+    };
+    const dir = fixture(t, files);
+    mkdirSync(join(dir, 'empty'));
+    const init = spawnSync('git', ['init', '--quiet'], {cwd: dir, encoding: 'utf8'});
+    assert.equal(init.status, 0, init.stderr);
+    const result = run(dir, [input]);
+    assert.equal(result.status, c.fails ? 1 : 0, result.stdout + result.stderr);
+    const data = JSON.parse(result.stdout);
+    assert.equal(data.yamlErrors.length, 0);
+    assert.ok(data.result.links.some(l => l.url === 'https://example.invalid/' && l.state === 'SKIPPED'));
+    // Successful same-document fragments need no separate Linkinator result.
+    if (c.target !== '#source') {
+      assert.ok(data.result.links.some(l => l.displayText === 'directory case'));
+    }
+    for (const [name, content] of Object.entries(files)) {
+      assert.equal(readFileSync(join(dir, name), 'utf8'), content);
+    }
+  });
+}
+test('directory contract: outside-root directory cannot be served', t => {
+  const parent = fixture(t, {'outside/index.html': '<h1>Outside</h1>\n'});
+  const dir = join(parent, 'repo');
+  mkdirSync(dir);
+  // WHATWG URL resolution clamps literal .. at the URL root. Encoded slashes
+  // exercise Linkinator's server containment check after percent decoding.
+  for (const target of ['../outside/', '..%2Foutside/']) {
+    const source = `# Source\n\n[outside](${target})\n`;
+    writeFileSync(join(dir, 'source.md'), source);
+    const result = run(dir, ['source.md']);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.ok(JSON.parse(result.stdout).result.links.some(l => l.state === 'BROKEN'));
+    assert.equal(readFileSync(join(dir, 'source.md'), 'utf8'), source);
+    assert.equal(readFileSync(join(parent, 'outside/index.html'), 'utf8'), '<h1>Outside</h1>\n');
+  }
+});
+test('native directory control: default rejects, directory listing accepts', t => {
+  const dir = fixture(t, {'source.md': '[docs](docs)\n', 'docs/keep.txt': 'keep\n'});
+  for (const enabled of [false, true]) {
+    const result = spawnSync(process.execPath,
+      [join(root, 'tests/link-validation/native-control.mjs'), ...(enabled ? ['--directory-listing'] : [])],
+      {cwd: dir, encoding: 'utf8', timeout: 30000});
+    assert.ifError(result.error);
+    assert.equal(result.status, enabled ? 0 : 1, result.stdout + result.stderr);
+    const link = JSON.parse(result.stdout).links.find(l => l.url === 'docs');
+    assert.equal(link.status, enabled ? 200 : 404);
+    assert.equal(link.state, enabled ? 'OK' : 'BROKEN');
+  }
+});
