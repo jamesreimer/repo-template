@@ -5,21 +5,18 @@ run also runs this suite. Tests materialize synthetic fixture strings in tempora
 directories and verify their bytes after validation; no repository content is
 rewritten or mirrored.
 
-`contract.json` retains all 63 cases from the scratch qualification, with the
-two authoring expectations updated for sole Linkinator fragment ownership
-(SHA-256 `08b3b7056fa2eee013029b1917428f6110946dc94b2c703afa4b63c0dd828c6c`).
-It does not claim continuity with the vanished historical 53-case suite.
-The current Planning decision makes every case offline: `expected_local` controls
-Linkinator acceptance, while former `expected_external` values describe historical
-online qualification only. Every discovered HTTP/HTTPS URL must be skipped.
+`contract.json` defines 63 local-link and Markdown authoring cases. The test
+runner verifies its SHA-256 digest before executing the cases; intentional
+fixture changes must update the pinned digest in `tests/link-validation.test.mjs`.
+`expected_local` controls Linkinator acceptance and `expected_lint` controls
+Markdownlint acceptance. Every discovered HTTP/HTTPS URL must be skipped.
 
 Linkinator is the sole owner of local fragment validity. Markdownlint retains
 Markdown authoring rules and does not independently validate fragments: only
 MD051 is disabled. The `dual-name-same` fixture remains positive coverage for
 Linkinator accepting the legacy name on an anchor with both `id` and `name`.
 The `same-metadata-phantom` fixture remains negative coverage for Linkinator
-rejecting a phantom metadata anchor through front-matter isolation. Both now
-expect Markdownlint acceptance; their local-link expectations are unchanged.
+rejecting a phantom metadata anchor through front-matter isolation. Both expect Markdownlint acceptance; Linkinator checks their fragments.
 
 Additional controls cover single-key metadata, native false-green behavior,
 disabled hooks, separate Marked instances, duplicate registration, independent
@@ -28,7 +25,7 @@ Node module hooks use public loader APIs to disable our hook or resolve it to a
 separate Marked module instance. They do not patch dependencies or add fragment
 matching. These controls are never imported by the production entry point.
 
-Directory regression cases extend the historical corpus without modifying it.
+Additional regression cases exercise directory destinations.
 They cover relative, trailing-slash, empty, nested, parent-relative, encoded,
 spaced, and query-bearing destinations; missing directories; file and fragment
 regressions; and outside-root paths. Native controls demonstrate the default
@@ -52,7 +49,5 @@ accepted and is not optimized.
 
 Link diagnostics retain original filenames and display text. Linkinator does
 not promise Markdown line/column positions. YAML snippets use metadata-relative
-positions; malformed files remain named as failed local results. The earlier
-broad claim that batch YAML failures could not be usefully attributed is withdrawn:
-the durable batch control identifies both original failing filenames. No source-map
-or line-number enhancement is part of D1.
+positions; malformed files remain named as failed local results. The batch
+regression test verifies that both original failing filenames are reported.
