@@ -28,6 +28,14 @@ Node module hooks use public loader APIs to disable our hook or resolve it to a
 separate Marked module instance. They do not patch dependencies or add fragment
 matching. These controls are never imported by the production entry point.
 
+Directory regression cases extend the historical corpus without modifying it.
+They cover relative, trailing-slash, empty, nested, parent-relative, encoded,
+spaced, and query-bearing destinations; missing directories; file and fragment
+regressions; and outside-root paths. Native controls demonstrate the default
+404 and the public `directoryListing` option's successful response. Index HTML
+fragments remain Linkinator-owned; generated listings have no native fragment
+validation. Each directory case checks source bytes and external-link exclusion.
+
 `tools/check-links.mjs` is a process entry point only. Each startup writes a tiny
 synthetic single-key YAML document in a temporary directory and asks Linkinator
 to validate its known body and metadata fragment references. The required outcome
