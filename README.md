@@ -1,5 +1,11 @@
 # Repository Template
 
+[![Repository validation](https://github.com/jamesreimer/repo-template/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/jamesreimer/repo-template/actions/workflows/validate.yml?query=branch%3Amain)
+[![Latest release](https://img.shields.io/github/v/release/jamesreimer/repo-template)](https://github.com/jamesreimer/repo-template/releases/latest)
+[![License: CC0](https://img.shields.io/badge/license-CC0-blue)](LICENSE)
+[![Node.js: 24.18.1](https://img.shields.io/badge/Node.js-24.18.1-green)](#run-checks)
+[![Python: >=3.10](https://img.shields.io/badge/Python-%3E%3D3.10-blue)](#run-checks)
+
 A reusable starting point for Git repositories, with contributor guidance and
 maintained tools for common file checks. It does not prescribe an application
 language, directory layout, deployment system, or organizational governance.
