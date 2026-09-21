@@ -1,5 +1,5 @@
 {
-  "identity": "New split-validator suite v1; no byte continuity with historical 53 cases",
+  "identity": "Offline local-link and Markdown authoring regression cases",
   "cases": [
     {
       "name": "ordinary-markdown",
@@ -11,7 +11,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -26,7 +25,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -41,7 +39,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -56,7 +53,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -71,7 +67,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -86,7 +81,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -101,7 +95,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -116,7 +109,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -131,7 +123,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -146,7 +137,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -161,7 +151,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -176,7 +165,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -191,7 +179,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -206,7 +193,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -221,7 +207,6 @@
       ],
       "expected_local": true,
       "expected_lint": false,
-      "expected_external": true,
       "owner": "markdownlint",
       "reference": "front-matter-report",
       "offline": true
@@ -236,7 +221,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -251,7 +235,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -266,7 +249,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -281,7 +263,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -296,7 +277,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -311,7 +291,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -326,7 +305,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -342,7 +320,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -357,7 +334,6 @@
       ],
       "expected_local": true,
       "expected_lint": false,
-      "expected_external": true,
       "owner": "markdownlint",
       "reference": "front-matter-report",
       "offline": true
@@ -372,7 +348,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -387,7 +362,6 @@
       ],
       "expected_local": true,
       "expected_lint": false,
-      "expected_external": true,
       "owner": "markdownlint",
       "reference": "front-matter-report",
       "offline": true
@@ -402,7 +376,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -417,7 +390,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -432,7 +404,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -448,7 +419,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -465,7 +435,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -481,7 +450,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -497,7 +465,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -512,7 +479,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -527,7 +493,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -543,7 +508,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -558,7 +522,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -573,7 +536,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -589,7 +551,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -604,7 +565,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -619,7 +579,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -635,7 +594,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "front-matter-report",
       "offline": true
@@ -650,7 +608,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "external",
       "reference": "front-matter-report",
       "offline": true
@@ -665,7 +622,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -681,7 +637,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -696,7 +651,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -712,7 +666,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -727,7 +680,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -743,7 +695,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -758,7 +709,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -774,7 +724,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -789,7 +738,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -805,7 +753,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -820,7 +767,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -836,7 +782,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -851,7 +796,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -867,7 +811,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "local",
       "reference": "consistency-review",
       "offline": true
@@ -882,7 +825,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "external",
       "reference": "split-responsibility-requirement",
       "offline": false
@@ -897,7 +839,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": false,
       "owner": "external",
       "reference": "split-responsibility-requirement",
       "offline": false
@@ -912,7 +853,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "external",
       "reference": "split-responsibility-requirement",
       "offline": false
@@ -927,7 +867,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": false,
       "owner": "external",
       "reference": "split-responsibility-requirement",
       "offline": false
@@ -942,7 +881,6 @@
       ],
       "expected_local": false,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "combination",
       "reference": "split-responsibility-requirement",
       "offline": false
@@ -957,7 +895,6 @@
       ],
       "expected_local": true,
       "expected_lint": true,
-      "expected_external": true,
       "owner": "external",
       "reference": "split-responsibility-requirement",
       "offline": false

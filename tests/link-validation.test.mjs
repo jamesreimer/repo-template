@@ -12,12 +12,12 @@ const cli = join(root, 'tools/check-links.mjs');
 const control = pathToFileURL(join(root, 'tests/link-validation/import-control.mjs')).href;
 const contractBytes = readFileSync(join(root, 'tests/link-validation/contract.json'));
 assert.equal(createHash('sha256').update(contractBytes).digest('hex'),
-  '08b3b7056fa2eee013029b1917428f6110946dc94b2c703afa4b63c0dd828c6c');
+  'ce3927d1a459025450ac75560686412bb803e97e3be1e9300ce57c7478305e33');
 const contract = JSON.parse(contractBytes);
 const lintPackage = JSON.parse(readFileSync(join(root, 'node_modules/markdownlint-cli2/package.json')));
 const lint = join(root, 'node_modules/markdownlint-cli2', lintPackage.bin['markdownlint-cli2']);
 function fixture(t, files) {
-  const dir = mkdtempSync(join(tmpdir(), 'd1-regression-'));
+  const dir = mkdtempSync(join(tmpdir(), 'link-regression-'));
   t.after(() => rmSync(dir, {recursive: true, force: true}));
   for (const [name, content] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, name)), {recursive: true});
@@ -35,11 +35,11 @@ function run(dir, paths, mode) {
   return result;
 }
 for (const c of contract.cases) {
-  test(`D1 contract: ${c.name}`, t => {
+  test(`Link contract: ${c.name}`, t => {
     const dir = fixture(t, c.files);
     const before = Object.keys(c.files).map(f => readFileSync(join(dir, f)));
     const result = run(dir, c.inputs);
-    // Planning explicitly narrows former online cases to local-only acceptance.
+    // Local acceptance is checked independently of external URLs, which are skipped.
     assert.equal(result.status, c.expected_local ? 0 : 1, result.stdout + result.stderr);
     const data = JSON.parse(result.stdout);
     for (const link of data.result.links.filter(link => /^https?:/.test(link.url))) {
@@ -111,7 +111,7 @@ test('native hook-disabled control exposes phantom-anchor false green', t => {
   assert.equal(JSON.parse(result.stdout).passed, true);
 });
 
-// Keep directory coverage separate from the immutable historical D1 corpus.
+// Exercise directory destinations in addition to the fixed contract cases.
 const directoryCases = [
   {name: 'relative directory', target: 'docs'},
   {name: 'trailing slash', target: 'docs/'},
