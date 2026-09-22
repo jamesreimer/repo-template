@@ -16,6 +16,7 @@ language, directory layout, deployment system, or organizational governance.
 2. Replace this README with the project's purpose and usage instructions.
 3. Review `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and `AGENTS.md` for the
    new project's actual ownership, reporting route, and working practices.
+   Delete `MAINTAINING.md`, which covers the template's own maintenance.
 4. Adapt the checks and ignore patterns to the project's files and requirements.
 5. Configure repository permissions and branch protection on your Git host.
    If requiring CI, the supplied job is named **Repository validation**.
