@@ -4,7 +4,7 @@ Keep changes tied to a concrete requirement or defect. Explain changes to the
 baseline in terms of their benefit and maintenance cost for consuming repositories.
 
 Maintainers: follow [MAINTAINING.md](MAINTAINING.md) when preparing or publishing
-a release of `repo-template`.
+a release.
 
 ## Workflow
 

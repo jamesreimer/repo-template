@@ -57,6 +57,16 @@ fails; do not proceed to publication.
 tag='vMAJOR.MINOR.PATCH'
 release_commit='<full validated commit SHA>'
 notes_file='<path to prepared release notes>'
+git fetch origin &&
+  git merge-base --is-ancestor "$release_commit" origin/main
+```
+
+Require exit status zero before tagging. The ancestry check returns status 1
+when the selected commit is not contained in the current `origin/main`.
+A failed fetch or any other error also stops the release. Use the merged commit,
+which may differ from the reviewed PR-head SHA after a squash merge.
+
+```sh
 git tag -a "$tag" "$release_commit" -m "repo-template $tag"
 ```
 
@@ -78,20 +88,33 @@ force, and publish its corresponding GitHub Release:
 
 ```sh
 git push origin "refs/tags/$tag"
-git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}"
 ```
 
-Before creating the GitHub Release, require the remote tag object SHA to match
-`git rev-parse "refs/tags/$tag"` and the remote peeled (`^{}`) SHA to match
-`$release_commit`. A missing peeled entry or a mismatch must be investigated
-before continuing; do not overwrite a published tag.
+Before creating the GitHub Release, define and run this verification:
+
+```sh
+verify_remote_tag() {
+  local_tag_object=$(git rev-parse "refs/tags/$tag") &&
+    remote_tag=$(git ls-remote --exit-code origin "refs/tags/$tag") &&
+    remote_commit=$(git ls-remote --exit-code origin "refs/tags/$tag^{}") &&
+    test "$remote_tag" = "$(printf '%s\t%s' "$local_tag_object" "refs/tags/$tag")" &&
+    test "$remote_commit" = "$(printf '%s\t%s' "$release_commit" "refs/tags/$tag^{}")"
+}
+verify_remote_tag
+```
+
+Require exit status zero. The comparisons require the remote tag object SHA to
+match the local tag object and the remote peeled (`^{}`) SHA to match
+`$release_commit`. `--exit-code` fails when a requested ref is missing, including
+the peeled entry required for an annotated tag. Any failure stops publication;
+investigate without overwriting a published tag.
 
 ```sh
 gh release create "$tag" --repo jamesreimer/repo-template --verify-tag \
   --title "repo-template $tag" --notes-file "$notes_file"
 gh release view "$tag" --repo jamesreimer/repo-template \
   --json url,tagName,name,isDraft,isPrerelease,publishedAt,body
-git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}"
+verify_remote_tag
 ```
 
 `--verify-tag` prevents implicit tag creation; it does not check tag type or
