@@ -27,6 +27,10 @@ links to a deleted target. Run the full command before opening a pull request.
 CI runs the same configuration on the checked-out commit. Required checks,
 review counts, merge strategy, and permissions belong to the repository's host
 settings and should be chosen for the project.
+The [default-branch ruleset](rulesets/README.md) supplies a reusable starting
+configuration and a separate host verification procedure. When changing the
+required job's name, source, or triggers, reconcile the live required check with
+the workflow so every pull request targeting the protected branch can report it.
 
 ## Changing validation
 

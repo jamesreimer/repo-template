@@ -19,7 +19,9 @@ language, directory layout, deployment system, or organizational governance.
    reporting route, working practices, and release procedure.
 4. Adapt the checks and ignore patterns to the project's files and requirements.
 5. Configure repository permissions and branch protection on your Git host.
-   If requiring CI, the supplied job is named **Repository validation**.
+   For GitHub, deliberately install and verify the
+   [default-branch ruleset](rulesets/README.md). Copying template files does not
+   configure live rules. The supplied required job is **Repository validation**.
 
 The template is released under [CC0](LICENSE). Choose the appropriate license
 for your project's own content deliberately.
