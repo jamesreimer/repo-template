@@ -14,6 +14,12 @@ MINOR for compatible additions, and PATCH for compatible fixes or clarifications
 Choose the version by reviewing the changes since the previous release and
 their impact on consuming repositories.
 
+Use the complete Git tag as the GitHub Release title, for example `v1.2.1`.
+This is the template's default display convention; Semantic Versioning governs
+version numbers, not release titles. Consumers may document a different local
+title convention. The editable title does not replace the immutable tag or its
+verified target.
+
 Future formal releases must use **annotated Git tags**. A GitHub Release must
 refer to the corresponding tag. Once published, release tags are immutable:
 do not move, replace, or delete them. Corrections requiring a different commit
@@ -111,7 +117,7 @@ investigate without overwriting a published tag.
 
 ```sh
 gh release create "$tag" --repo jamesreimer/repo-template --verify-tag \
-  --title "repo-template $tag" --notes-file "$notes_file"
+  --title "$tag" --notes-file "$notes_file"
 gh release view "$tag" --repo jamesreimer/repo-template \
   --json url,tagName,name,isDraft,isPrerelease,publishedAt,body
 verify_remote_tag
@@ -119,7 +125,8 @@ verify_remote_tag
 
 `--verify-tag` prevents implicit tag creation; it does not check tag type or
 the intended commit, which the earlier checks establish. After publication,
-confirm the release is published (not a draft or prerelease), its tag and notes
+confirm the release is published (not a draft or prerelease), its title follows
+the naming convention above, its tag and notes
 are correct, and its page and source archives are available. Recheck the remote
 tag object and peeled commit against the same expected SHAs. If publication
 fails after the tag push, inspect the remote tag and release state before
