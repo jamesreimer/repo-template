@@ -14,8 +14,9 @@ language, directory layout, deployment system, or organizational governance.
 
 1. Create a repository from this template or copy the files you need.
 2. Replace this README with the project's purpose and usage instructions.
-3. Review `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, and `AGENTS.md` for the
-   new project's actual ownership, reporting route, and working practices.
+3. Review and adapt `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md`, and
+   [MAINTAINING.md](MAINTAINING.md) for the new project's actual ownership,
+   reporting route, working practices, and release procedure.
 4. Adapt the checks and ignore patterns to the project's files and requirements.
 5. Configure repository permissions and branch protection on your Git host.
    If requiring CI, the supplied job is named **Repository validation**.
