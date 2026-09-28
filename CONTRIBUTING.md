@@ -1,7 +1,8 @@
 # Contributing
 
 Keep changes tied to a concrete requirement or defect. Explain changes to the
-baseline in terms of their benefit and maintenance cost for consuming repositories.
+baseline in terms of their benefit, maintenance cost, and cost of deferral for
+consuming repositories, including any loss of evidence quality from waiting.
 
 Maintainers: follow [MAINTAINING.md](MAINTAINING.md) when preparing or publishing
 a release.
@@ -10,6 +11,14 @@ a release.
 
 Use a descriptive branch and pull request title that identify the work. No
 specific prefix vocabulary or commit-message format is required by the template.
+
+When a repository has deliberately selected a durable historical/evidence
+artifact, update it as part of the change that creates the historical fact,
+while context is fresh. Do not wait until release time to reconstruct entries
+from Git, pull requests, or issues. These contemporaneous records preserve the
+change's historical significance; release notes summarize the recorded release
+delta. Git, pull requests, and issues remain detailed implementation and
+decision evidence.
 
 Follow the [setup instructions](README.md#run-checks), stage intended new files,
 and run:

@@ -24,8 +24,15 @@ presence of an old rule is not itself a reason to request permission again.
   deploy, merge, or modify sibling repositories from permission to edit here.
 - For substantive changes, identify the requirement, affected responsibilities,
   consumer impact, and evidence needed to establish correctness.
-- Prefer maintained tools to custom parsers and validation frameworks. Add a
-  dependency, file, or control only for a concrete benefit worth its upkeep.
+- Prefer maintained tools to custom parsers and validation frameworks. Evaluate
+  a dependency, file, or control against its coherent responsibility, present
+  benefit, maintenance cost, and cost of deferral. For artifacts that depend on
+  contemporaneous recording, explain how delay would materially weaken that
+  responsibility through evidence loss, degraded historical interpretation, or
+  costly or unreliable reconstruction. Small initial content is not by itself
+  a reason to defer such an artifact. This does not authorize speculative
+  dashboards, schemas, taxonomies, ledgers, automation, or other machinery
+  without a coherent responsibility.
 - Evaluate findings on their merits. A non-blocking classification alone does
   not justify deferral; neither does it require unrelated cleanup.
 - Use a descriptive work branch and prepare a reviewable pull request. Do not
