@@ -36,7 +36,12 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
 2. Select the intended release commit from reviewed, merged work on `main`.
    Record its full commit SHA and check it out for validation. Review the changes
    since the previous release, including documentation, dependency updates, and
-   effects on consumers. Confirm repository CI passes for this commit.
+   effects on consumers. Verify that any repository-selected time-sensitive
+   historical/evidence artifacts are current for this release candidate. Use
+   those records as inputs to release preparation; keep their updates with the
+   changes that create the historical facts, rather than making release time
+   the default point for reconstructing history. Confirm repository CI passes
+   for this commit.
 3. Follow the [setup instructions](README.md#run-checks), then run:
 
    ```sh
@@ -49,8 +54,10 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    and select and validate the resulting merged commit before proceeding.
 4. Choose an unused version. Check both local and remote tags and existing
    [GitHub Releases](https://github.com/jamesreimer/repo-template/releases).
-   Prepare release notes describing the changes, consumer impact, and any
-   adoption steps. Keep the notes outside the checkout so it remains clean.
+   Prepare release notes summarizing the release delta, using any selected
+   historical/evidence records and detailed Git, pull request, and issue
+   evidence. Describe the changes, consumer impact, and any adoption steps.
+   Keep the notes outside the checkout so it remains clean.
 
 ## Create and verify the tag
 

@@ -17,8 +17,15 @@ language, directory layout, deployment system, or organizational governance.
 3. Review and adapt `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `AGENTS.md`, and
    [MAINTAINING.md](MAINTAINING.md) for the new project's actual ownership,
    reporting route, working practices, and release procedure.
-4. Adapt the checks and ignore patterns to the project's files and requirements.
-5. Configure repository permissions and branch protection on your Git host.
+4. If the repository is expected to have independent versioning or releases,
+   externally meaningful compatibility or consumer transitions, or durable
+   historical/evidence obligations, evaluate time-sensitive evidence needs at
+   bootstrap. Identify what must be recorded while context is fresh and whether
+   existing records satisfy that responsibility. Do not assume historical
+   artifacts can be added later without evidence loss; choose their form based
+   on the responsibility they serve.
+5. Adapt the checks and ignore patterns to the project's files and requirements.
+6. Configure repository permissions and branch protection on your Git host.
    For GitHub, deliberately install and verify the
    [default-branch ruleset](rulesets/README.md). Copying template files does not
    configure live rules. The supplied required job is **Repository validation**.
@@ -114,6 +121,18 @@ validation engine, extension API, or generated tree snapshot. Add project tests
 and domain-specific checks when the project needs them, using the existing
 runner or its own build system.
 
-Evaluate additions against a concrete need and their maintenance cost for
-consuming repositories. Revise defaults that obstruct a project's requirements
-rather than treating their presence in the template as proof they are necessary.
+Evaluate additions against a coherent responsibility, present benefit,
+maintenance cost, and cost of deferral for consuming repositories. When an
+artifact's purpose materially depends on contemporaneous recording, delayed
+creation can permanently reduce evidence quality even if the artifact can
+technically be added later. Explain what evidence would be lost or materially
+degraded, how reliably it could be recovered, and the cost of reconstruction.
+Git, pull requests, and issues may supply detailed evidence without preserving
+all of the historical interpretation a responsibility needs.
+
+Deferral remains appropriate when later creation preserves substantially the
+same value and maintenance cost outweighs present benefit. Evidence-loss
+reasoning does not justify speculative machinery or a duplicate provenance
+ledger without a distinct durable responsibility. Revise defaults that obstruct
+a project's requirements rather than treating their presence in the template
+as proof they are necessary for every consumer.
