@@ -62,8 +62,10 @@ delta with the recorded summaries before publication, as described in
 [release preparation](MAINTAINING.md#prepare-the-release). This transfers and
 curates existing interpretation rather than reconstructing it from scratch.
 
-The initial entries from `1.0.0` through `1.2.1` were backfilled from retained
-release notes, tags, and changes; they were not written contemporaneously.
+Repo-template's initial changelog history, `1.0.0` through `1.2.1`, was backfilled
+from retained release notes, tags, and changes; it was not written
+contemporaneously. Consuming repositories should adapt or remove this
+repo-template-specific note when establishing their own independent history.
 
 ## Changing validation
 

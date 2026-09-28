@@ -46,7 +46,9 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
 
    Follow [Common Changelog](https://common-changelog.org/): use a release heading
    such as `## [1.2.1] - 2026-09-23`, with the selected version without `v`, the
-   intended publication date in `YYYY-MM-DD`, and a link to its GitHub Release.
+   intended UTC publication date in `YYYY-MM-DD`, and a link to its GitHub Release.
+   For repo-template, the changelog date is the UTC calendar date of the GitHub
+   Release `publishedAt` timestamp; verify it after publication as described below.
    Order releases newest first by semantic version. Use applicable `Changed`,
    `Added`, `Removed`, and `Fixed` groups in that order; write concise imperative
    entries with supporting links and mark breaking changes. Curate related
@@ -161,3 +163,9 @@ are correct, and its page and source archives are available. Recheck the remote
 tag object and peeled commit against the same expected SHAs. If publication
 fails after the tag push, inspect the remote tag and release state before
 retrying; preserve the published tag.
+
+Verify that the UTC calendar date of the release's actual `publishedAt`
+timestamp matches its changelog heading. If it differs, record the discrepancy
+and correct the changelog through the normal reviewed successor PR process.
+Preserve the published tag and its tree; do not silently rewrite published
+history. Any successor release still requires separate publication authorization.
