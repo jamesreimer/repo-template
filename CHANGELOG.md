@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] - 2026-09-29
+
+### Added
+
+- Add a Common Changelog history with supported backfill, independent consumer-history reset guidance, contribution-time summaries and PR prompting, and release preparation with UTC dates ([`f38ea7e`](https://github.com/jamesreimer/repo-template/commit/f38ea7e2b46769903f6653cf52d06021de3a6e5c), [#49](https://github.com/jamesreimer/repo-template/pull/49))
+
+### Fixed
+
+- Account for deferral cost and evidence loss in bootstrap/addition decisions, and require contemporaneous recording when delay weakens historical interpretation ([`4af4136`](https://github.com/jamesreimer/repo-template/commit/4af413673f24c1a367e08a546ee8fabd65b5d76b), [#47](https://github.com/jamesreimer/repo-template/pull/47))
+
 ## [1.2.1] - 2026-09-23
 
 ### Changed
@@ -34,6 +44,7 @@
 
 _First stable adoption baseline._
 
+[1.3.0]: https://github.com/jamesreimer/repo-template/releases/tag/v1.3.0
 [1.2.1]: https://github.com/jamesreimer/repo-template/releases/tag/v1.2.1
 [1.2.0]: https://github.com/jamesreimer/repo-template/releases/tag/v1.2.0
 [1.1.0]: https://github.com/jamesreimer/repo-template/releases/tag/v1.1.0
