@@ -4,31 +4,31 @@
 
 ### Changed
 
-- Use the complete version tag as the default GitHub Release title and verify it after publication ([#44](https://github.com/jamesreimer/repo-template/pull/44))
+- Use the complete version tag as the default GitHub Release title and verify it after publication ([`de0fd92`](https://github.com/jamesreimer/repo-template/commit/de0fd9206cf0448d50e0dd0f58f858eea46697ad), [#44](https://github.com/jamesreimer/repo-template/pull/44))
 
 ## [1.2.0] - 2026-09-23
 
 ### Added
 
-- Add an installable default-branch ruleset requiring up-to-date, validated squash PRs and resolved review conversations, with deliberate installation and verification guidance ([#42](https://github.com/jamesreimer/repo-template/pull/42))
+- Add an installable default-branch ruleset requiring up-to-date, validated squash PRs and resolved review conversations, with deliberate installation and verification guidance ([`90d3b5a`](https://github.com/jamesreimer/repo-template/commit/90d3b5a6324bfcff6e9bb1b24de02d3677b73f93), [#42](https://github.com/jamesreimer/repo-template/pull/42))
 
 ## [1.1.0] - 2026-09-23
 
 ### Added
 
-- Add release-maintenance guidance covering version selection, immutable annotated tags, exact local and remote tag verification, and authorized publication ([#39](https://github.com/jamesreimer/repo-template/pull/39))
+- Add release-maintenance guidance covering version selection, immutable annotated tags, exact local and remote tag verification, and authorized publication ([`4f848f2`](https://github.com/jamesreimer/repo-template/commit/4f848f29e9021a9f9b19a81a3a83436113880d97), [#39](https://github.com/jamesreimer/repo-template/pull/39))
 
 ## [1.0.2] - 2026-09-21
 
 ### Changed
 
-- Simplify the link regression contract documentation and remove unused fixture metadata while preserving active coverage; update the contract and digest-pinned runner together when adopting ([#36](https://github.com/jamesreimer/repo-template/pull/36))
+- Simplify the link regression contract documentation and remove unused fixture metadata while preserving active coverage; update the contract and digest-pinned runner together when adopting ([`b79d8d0`](https://github.com/jamesreimer/repo-template/commit/b79d8d0f14b26a2c6414a016b9501853e68f4670), [#36](https://github.com/jamesreimer/repo-template/pull/36))
 
 ## [1.0.1] - 2026-09-21
 
 ### Fixed
 
-- Accept local directory links without requiring `index.html`, while still rejecting missing directories; use explicit files when fragment validation is needed ([#32](https://github.com/jamesreimer/repo-template/pull/32))
+- Accept local directory links without requiring `index.html`, while still rejecting missing directories; use explicit files when fragment validation is needed ([`4877171`](https://github.com/jamesreimer/repo-template/commit/4877171f3a45ed98645e8be7af8fa5e32e5b6a90), [#32](https://github.com/jamesreimer/repo-template/pull/32))
 
 ## [1.0.0] - 2026-09-20
 
