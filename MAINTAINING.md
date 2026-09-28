@@ -33,16 +33,41 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
 
 1. Fetch the current default branch (`main`) and tags from `origin`. Confirm
    that `origin` is `jamesreimer/repo-template` and the working tree is clean.
-2. Select the intended release commit from reviewed, merged work on `main`.
+2. Choose an unused version under the release rules above. Check local and
+   remote tags and existing
+   [GitHub Releases](https://github.com/jamesreimer/repo-template/releases).
+   Prepare a changelog update through the ordinary reviewed PR workflow before
+   selecting the final release commit. Review every change since the previous
+   release against the summaries retained in PR descriptions under the
+   [contribution workflow](CONTRIBUTING.md#changelog), including summaries carried
+   forward from earlier PRs. Verify that all notable changes are represented;
+   resolve missing or unclear summaries with their authors and retained evidence.
+   Do not reconstruct the changelog from scratch at release time.
+
+   Follow [Common Changelog](https://common-changelog.org/): use a release heading
+   such as `## [1.2.1] - 2026-09-23`, with the selected version without `v`, the
+   intended UTC publication date in `YYYY-MM-DD`, and a link to its GitHub Release.
+   For repo-template, the changelog date is the UTC calendar date of the GitHub
+   Release `publishedAt` timestamp; verify it after publication as described below.
+   Order releases newest first by semantic version. Use applicable `Changed`,
+   `Added`, `Removed`, and `Fixed` groups in that order; write concise imperative
+   entries with supporting links and mark breaking changes. Curate related
+   summaries into the release delta. If publication is delayed or its scope
+   changes, correct the date, version, and entries through a reviewed PR and
+   validate the resulting commit again before tagging. A prepared changelog
+   section does not authorize publication.
+3. Select the intended release commit from reviewed, merged work on `main`.
    Record its full commit SHA and check it out for validation. Review the changes
    since the previous release, including documentation, dependency updates, and
-   effects on consumers. Verify that any repository-selected time-sensitive
-   historical/evidence artifacts are current for this release candidate. Use
+   effects on consumers. Verify that `CHANGELOG.md` covers the notable release
+   delta and its version/date match the planned publication. Verify that any
+   other repository-selected time-sensitive historical/evidence artifacts are
+   current for this release candidate. Use
    those records as inputs to release preparation; keep their updates with the
    changes that create the historical facts, rather than making release time
    the default point for reconstructing history. Confirm repository CI passes
    for this commit.
-3. Follow the [setup instructions](README.md#run-checks), then run:
+4. Follow the [setup instructions](README.md#run-checks), then run:
 
    ```sh
    .venv/bin/pre-commit run --all-files --show-diff-on-failure
@@ -52,12 +77,12 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    Require passing checks and a clean working tree. If checks fix files or a
    defect needs correction, submit the change through the contribution workflow
    and select and validate the resulting merged commit before proceeding.
-4. Choose an unused version. Check both local and remote tags and existing
-   [GitHub Releases](https://github.com/jamesreimer/repo-template/releases).
-   Prepare release notes summarizing the release delta, using any selected
-   historical/evidence records and detailed Git, pull request, and issue
-   evidence. Describe the changes, consumer impact, and any adoption steps.
-   Keep the notes outside the checkout so it remains clean.
+5. Recheck that the chosen version is unused in local/remote tags and GitHub
+   Releases. Prepare release notes summarizing the release delta from
+   `CHANGELOG.md` and detailed Git, pull request, and issue evidence. Keep the
+   notable changes consistent with the changelog and add release-specific
+   consumer impact and adoption steps as needed. Keep the notes outside the
+   checkout so it remains clean.
 
 ## Create and verify the tag
 
@@ -138,3 +163,9 @@ are correct, and its page and source archives are available. Recheck the remote
 tag object and peeled commit against the same expected SHAs. If publication
 fails after the tag push, inspect the remote tag and release state before
 retrying; preserve the published tag.
+
+Verify that the UTC calendar date of the release's actual `publishedAt`
+timestamp matches its changelog heading. If it differs, record the discrepancy
+and correct the changelog through the normal reviewed successor PR process.
+Preserve the published tag and its tree; do not silently rewrite published
+history. Any successor release still requires separate publication authorization.
