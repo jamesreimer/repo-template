@@ -24,8 +24,15 @@ language, directory layout, deployment system, or organizational governance.
    existing records satisfy that responsibility. Do not assume historical
    artifacts can be added later without evidence loss; choose their form based
    on the responsibility they serve.
-5. Adapt the checks and ignore patterns to the project's files and requirements.
-6. Configure repository permissions and branch protection on your Git host.
+5. Review and reset the inherited [CHANGELOG.md](CHANGELOG.md): its release
+   entries describe repo-template, not your new repository's independent
+   history. Remove repo-template's entries and release links. If keeping a
+   changelog, retain the [Common Changelog](https://common-changelog.org/)
+   convention and begin your own history at the first relevant state/release.
+   Before that release, preserve notable change summaries through the
+   [contribution workflow](CONTRIBUTING.md#changelog), without inventing a release.
+6. Adapt the checks and ignore patterns to the project's files and requirements.
+7. Configure repository permissions and branch protection on your Git host.
    For GitHub, deliberately install and verify the
    [default-branch ruleset](rulesets/README.md). Copying template files does not
    configure live rules. The supplied required job is **Repository validation**.

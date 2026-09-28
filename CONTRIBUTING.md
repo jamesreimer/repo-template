@@ -12,13 +12,9 @@ a release.
 Use a descriptive branch and pull request title that identify the work. No
 specific prefix vocabulary or commit-message format is required by the template.
 
-When a repository has deliberately selected a durable historical/evidence
-artifact, update it as part of the change that creates the historical fact,
-while context is fresh. Do not wait until release time to reconstruct entries
-from Git, pull requests, or issues. These contemporaneous records preserve the
-change's historical significance; release notes summarize the recorded release
-delta. Git, pull requests, and issues remain detailed implementation and
-decision evidence.
+Record notable changes through the [changelog workflow](#changelog) as part of
+the change that creates the historical fact, while context is fresh. Update any
+other deliberately selected historical/evidence artifacts in the same change.
 
 Follow the [setup instructions](README.md#run-checks), stage intended new files,
 and run:
@@ -40,6 +36,34 @@ The [default-branch ruleset](rulesets/README.md) supplies a reusable starting
 configuration and a separate host verification procedure. When changing the
 required job's name, source, or triggers, reconcile the live required check with
 the workflow so every pull request targeting the protected branch can report it.
+
+## Changelog
+
+[CHANGELOG.md](CHANGELOG.md) follows [Common Changelog](https://common-changelog.org/)
+and preserves a concise interpretation of notable repository changes. Git owns
+exact history; PRs and issues retain implementation and decision evidence;
+GitHub Releases record publication and release-specific notes; current files
+define current behavior. The changelog does not duplicate those responsibilities.
+
+For each PR, include a proposed changelog summary and supporting references in
+the PR description, or explain why the change is not notable. Capture consumer
+impact and compatibility implications while context is fresh. Reviewers verify
+that this summary reflects the final change before merge. Keep it concise and
+curated: baseline additions, consumer fixes, validation behavior, and meaningful
+maintenance or release-procedure changes belong here; routine dependency bumps
+and trivial edits generally do not.
+
+Before a release version and date are selected, pending summaries accumulate in
+those retained PR descriptions. Do not add an `Unreleased` section, invent a
+version/date, or put new changes under an already published release. Once a
+release section is being prepared, update it in the same PR as any further
+notable change included in that release. Maintainers reconcile the complete
+delta with the recorded summaries before publication, as described in
+[release preparation](MAINTAINING.md#prepare-the-release). This transfers and
+curates existing interpretation rather than reconstructing it from scratch.
+
+The initial entries from `1.0.0` through `1.2.1` were backfilled from retained
+release notes, tags, and changes; they were not written contemporaneously.
 
 ## Changing validation
 

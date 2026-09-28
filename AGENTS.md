@@ -3,7 +3,11 @@
 ## Authority and scope
 
 Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing
-this baseline. No external standards are adopted by this template.
+this baseline. [Common Changelog](https://common-changelog.org/) governs changelog
+format only; contribution and release mechanics belong to
+[CONTRIBUTING.md](CONTRIBUTING.md#changelog) and
+[MAINTAINING.md](MAINTAINING.md#prepare-the-release). No other external standards
+are adopted by this template.
 
 Consumers: replace this paragraph with links to your actual governing standards
 or authority entry point, if any. Route work to every applicable standard within
