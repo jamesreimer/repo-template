@@ -37,6 +37,17 @@ language, directory layout, deployment system, or organizational governance.
    [default-branch ruleset](rulesets/README.md). Copying template files does not
    configure live rules. The supplied required job is **Repository validation**.
 
+   Choose GitHub issue-closing relationships per issue, based on its substantive
+   completion boundary. When merge completes the substantive work, use a closing
+   relationship so merge closes the issue. When material completion obligations
+   remain after merge, use a non-closing reference and explicitly close the issue
+   when those obligations are complete. Routine housekeeping, such as branch
+   cleanup, local synchronization, or workspace cleanup, does not keep an
+   otherwise completed issue open merely because it happens later, unless the
+   project explicitly makes it substantive. Make this distinction through PR
+   relationships; repository-wide auto-close configuration is not the normal
+   mechanism. This guidance does not require Agent Workflows.
+
 The template is released under [CC0](LICENSE). Choose the appropriate license
 for your project's own content deliberately.
 
