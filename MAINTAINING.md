@@ -63,9 +63,11 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    Apply the [durable-reference guidance](CONTRIBUTING.md#changelog) according to
    the merge method used for the change:
 
-   - With a merge commit, a substantive PR commit may be cited only if it is
-     distinct from the commit adding the changelog entry and survives unchanged
-     in merged published history. Otherwise use the PR.
+   - With a merge commit, a substantive PR commit may be cited only when, before
+     merge, the selected landing method and candidate state establish that it
+     will survive unchanged in published history, and it is distinct from the
+     commit adding the changelog entry. If the landing method or commit survival
+     can still change, including through amendment or replacement, use the PR.
    - With a squash merge, the merge creates a new canonical commit. A same-PR
      entry uses the PR unless it refers to an earlier already-canonical change.
    - With a rebase merge that rewrites the original PR commit identities, a
