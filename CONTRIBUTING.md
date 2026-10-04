@@ -53,6 +53,18 @@ curated: baseline additions, consumer fixes, validation behavior, and meaningful
 maintenance or release-procedure changes belong here; routine dependency bumps
 and trivial edits generally do not.
 
+Common Changelog says changes reference relevant commits while its examples
+also demonstrate pull-request references. This repository treats a pull request
+as the durable change reference when the commit that will represent a same-PR
+change in published history does not yet exist.
+
+When that canonical commit already exists, use it and include the associated
+pull request where useful. A pull-request reference used for a same-PR change
+is final; do not later supplement or replace it merely because the canonical
+merged commit becomes available. Do not cite a commit that will not belong to
+published history. [Release preparation](MAINTAINING.md#prepare-the-release)
+describes reference selection across merge methods without requiring one method.
+
 Before a release version and date are selected, pending summaries accumulate in
 those retained PR descriptions. Do not add an `Unreleased` section, invent a
 version/date, or put new changes under an already published release. Once a
