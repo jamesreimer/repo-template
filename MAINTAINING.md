@@ -88,9 +88,10 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    changes before merge, correct the date, version, and entries in the same PR
    with proportionate re-review under the ordinary review process. This includes
    crossing UTC midnight when the intended publication day changes. If a mismatch
-   is discovered after merge or publication, use the existing reviewed successor
-   correction path. Validate the resulting merged commit again before tagging;
-   preserve the post-publication date verification below. A prepared changelog
+   is discovered after merge but before tagging, correct it through a reviewed
+   PR and select and validate the resulting merged commit before tagging. If
+   discovered after publication, use the reviewed successor correction path
+   below. Preserve the post-publication date verification below. A prepared changelog
    section does not authorize publication.
 3. Select the intended release commit from reviewed, merged work on `main`.
    Record its full commit SHA and check it out for validation. Review the changes

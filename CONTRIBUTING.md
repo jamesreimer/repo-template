@@ -53,10 +53,11 @@ curated: baseline additions, consumer fixes, validation behavior, and meaningful
 maintenance or release-procedure changes belong here; routine dependency bumps
 and trivial edits generally do not.
 
-Common Changelog says changes reference relevant commits while its examples
-also demonstrate pull-request references. This repository treats a pull request
-as the durable change reference when the commit that will represent a same-PR
-change in published history does not yet exist.
+Common Changelog states that changes must reference relevant commits, while its
+own examples also show pull-request references. This repository interprets those
+examples as permitting a pull request to serve as the durable change reference
+when the commit that will represent a same-PR change in published history does
+not yet exist.
 
 When that canonical commit already exists, use it and include the associated
 pull request where useful. A pull-request reference used for a same-PR change
