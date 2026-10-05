@@ -44,6 +44,38 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    resolve missing or unclear summaries with their authors and retained evidence.
    Do not reconstruct the changelog from scratch at release time.
 
+   The release section may ship in the same PR as a release-bearing change when
+   the intended version, release scope, and intended UTC publication date are
+   established. In that path, complete this step's existing release-delta
+   verification inside the same PR before merge, accounting for every change
+   since the previous release against retained summaries. Earlier merged changes
+   may cite canonical commits while the current same-PR change cites the PR.
+   Mixed reference forms are acceptable when they accurately reflect publication
+   state.
+
+   Use the existing separate reviewed changelog-preparation path when version,
+   scope, or intended UTC publication date is not established for the substantive
+   PR, when that PR has already merged without the release section, or when a
+   correction is needed after merge. Establish the release facts before preparing
+   the section in that later PR. Aggregating several earlier changes does not
+   itself require a separate changelog PR.
+
+   Apply the [durable-reference guidance](CONTRIBUTING.md#changelog) according to
+   the merge method used for the change:
+
+   - With a merge commit, a substantive PR commit may be cited only when, before
+     merge, the selected landing method and candidate state establish that it
+     will survive unchanged in published history, and it is distinct from the
+     commit adding the changelog entry. If the landing method or commit survival
+     can still change, including through amendment or replacement, use the PR.
+   - With a squash merge, the merge creates a new canonical commit. A same-PR
+     entry uses the PR unless it refers to an earlier already-canonical change.
+   - With a rebase merge that rewrites the original PR commit identities, a
+     same-PR entry uses the PR unless it refers to an earlier already-canonical
+     change.
+
+   These cases do not require a particular merge method or change host settings.
+
    Follow [Common Changelog](https://common-changelog.org/): use a release heading
    such as `## [1.2.1] - 2026-09-23`, with the selected version without `v`, the
    intended UTC publication date in `YYYY-MM-DD`, and a link to its GitHub Release.
@@ -53,8 +85,13 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    `Added`, `Removed`, and `Fixed` groups in that order; write concise imperative
    entries with supporting links and mark breaking changes. Curate related
    summaries into the release delta. If publication is delayed or its scope
-   changes, correct the date, version, and entries through a reviewed PR and
-   validate the resulting commit again before tagging. A prepared changelog
+   changes before merge, correct the date, version, and entries in the same PR
+   with proportionate re-review under the ordinary review process. This includes
+   crossing UTC midnight when the intended publication day changes. If a mismatch
+   is discovered after merge but before tagging, correct it through a reviewed
+   PR and select and validate the resulting merged commit before tagging. If
+   discovered after publication, use the reviewed successor correction path
+   below. Preserve the post-publication date verification below. A prepared changelog
    section does not authorize publication.
 3. Select the intended release commit from reviewed, merged work on `main`.
    Record its full commit SHA and check it out for validation. Review the changes
