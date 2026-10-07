@@ -71,6 +71,17 @@ test("fix mode reports but does not invent a closing position", (t) => {
 
 // Exercise the filename boundary with the actual configuration and CLI, including
 // paths that glob interpretation would silently omit or expand to other files.
+test("ordinary Markdown hook uses the literal-filename adapter", () => {
+  const parseYaml = require("markdownlint-cli2/parsers/yaml").default;
+  const config = parseYaml(readFileSync(join(root, ".pre-commit-config.yaml"), "utf8"));
+  const ordinaryHooks = config.repos
+    .filter((repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2")
+    .flatMap((repo) => repo.hooks)
+    .filter((hook) => hook.id === "markdownlint-cli2" && hook.alias !== "test-markdown-rules");
+  assert.equal(ordinaryHooks.length, 1, "Expected exactly one ordinary Markdown hook");
+  assert.equal(ordinaryHooks[0].entry, "node tools/markdownlint-files.cjs");
+});
+
 const literalNames = [
   "ordinary.md",
   "nested/deeper/new.md",
@@ -79,6 +90,8 @@ const literalNames = [
   `deep${"{".repeat(48)}a,b${"}".repeat(48)}.md`,
   "file with spaces.md",
   "plus+(a).md",
+  "#hash.md",
+  "!bang.md",
   // Windows filesystems reject colon and star in these filename positions.
   ...(process.platform === "win32" ? [] : [":literal-name.md", "star*.md"])
 ];
