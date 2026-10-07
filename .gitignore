@@ -8,10 +8,6 @@ desktop.ini
 
 # Tool environments and caches
 .venv/
-__pycache__/
-*.py[cod]
-.ruff_cache/
-.pytest_cache/
 node_modules/
 
 # Local environment values; reviewed examples may be committed

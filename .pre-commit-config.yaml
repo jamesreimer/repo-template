@@ -9,7 +9,6 @@ repos:
       - id: check-json
       - id: check-yaml
         args: [--allow-multiple-documents]
-      - id: check-toml
       - id: check-case-conflict
       - id: check-symlinks
       - id: detect-private-key
@@ -48,12 +47,6 @@ repos:
         entry: npm run test:links
         always_run: true
         pass_filenames: false
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 2eeb5678de71a00c0902cbda7105d328432f72cb # v0.16.8
-    hooks:
-      - id: ruff-check
-      - id: ruff-format
 
   - repo: https://github.com/rhysd/actionlint
     rev: 914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12

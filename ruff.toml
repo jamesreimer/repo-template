@@ -1,8 +1,0 @@
-# Adapt to the consuming project's Python version and style.
-line-length = 100
-
-[lint]
-select = ["E4", "E7", "E9", "F", "I"]
-
-[format]
-line-ending = "lf"
