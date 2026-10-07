@@ -3,17 +3,24 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { createRequire } = require("node:module");
 const { tmpdir } = require("node:os");
 const { dirname, resolve, join } = require("node:path");
 const { test } = require("node:test");
 
 // Run the installed CLI from the hook environment, using the real parser and the
 // repository's actual configuration. No copied parser or synthetic tokens.
-// pre-commit sets NODE_PATH to its isolated Node environment. Resolve the
-// package's declared binary and use Node directly, avoiding platform shell shims.
-const cliRoot = dirname(require.resolve("markdownlint-cli2"));
-const cliPackage = JSON.parse(readFileSync(join(cliRoot, "package.json"), "utf8"));
+// pre-commit owns NODE_PATH. Select that installation explicitly so checkout
+// dependencies cannot shadow either the CLI or its exported YAML parser.
+if (!process.env.NODE_PATH) {
+  throw new Error("Run these tests through pre-commit run test-markdown-rules; its Node hook environment must supply NODE_PATH.");
+}
+const cliRoot = join(process.env.NODE_PATH, "markdownlint-cli2");
+const cliManifest = join(cliRoot, "package.json");
+const cliPackage = JSON.parse(readFileSync(cliManifest, "utf8"));
 const cli = resolve(cliRoot, cliPackage.bin["markdownlint-cli2"]);
+const hookRequire = createRequire(cliManifest);
+
 const root = resolve(__dirname, "..");
 const configPath = join(root, ".markdownlint-cli2.jsonc");
 const cases = [
@@ -72,7 +79,7 @@ test("fix mode reports but does not invent a closing position", (t) => {
 // Exercise the filename boundary with the actual configuration and CLI, including
 // paths that glob interpretation would silently omit or expand to other files.
 test("ordinary Markdown hook uses the literal-filename adapter", () => {
-  const parseYaml = require("markdownlint-cli2/parsers/yaml").default;
+  const parseYaml = hookRequire("markdownlint-cli2/parsers/yaml").default;
   const config = parseYaml(readFileSync(join(root, ".pre-commit-config.yaml"), "utf8"));
   const ordinaryHooks = config.repos
     .filter((repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2")
@@ -109,8 +116,7 @@ function literalFixture(t) {
 function lintLiteral(dir, names) {
   const result = spawnSync(process.execPath,
     [join(root, "tools/markdownlint-files.cjs"), ...names],
-    { cwd: dir, encoding: "utf8", timeout: 30000,
-      env: { ...process.env, NODE_PATH: process.env.NODE_PATH || dirname(cliRoot) } });
+    { cwd: dir, encoding: "utf8", timeout: 30000 });
   assert.ifError(result.error);
   assert.equal(result.signal, null);
   return { ...result, output: result.stdout + result.stderr };
