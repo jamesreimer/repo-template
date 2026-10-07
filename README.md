@@ -53,7 +53,9 @@ for your project's own content deliberately.
 
 ## Run checks
 
-Install Python 3.10 or later and Node.js 24.18.1 (including npm). Then:
+Install Python 3.10 or later to run pre-commit and Node.js 24.18.1 (including npm).
+The template maintains no Python source. Consumers introducing Python source
+should choose and configure their own Python tooling. Then:
 
 ```sh
 npm ci --ignore-scripts
@@ -83,12 +85,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance and validation details.
 | Responsibility | Tool |
 | --- | --- |
 | Merge markers, file endings, trailing whitespace, and mixed line endings | pre-commit-hooks |
-| JSON, YAML, and TOML syntax | pre-commit-hooks |
+| JSON and YAML syntax | pre-commit-hooks |
 | Case-colliding paths and broken symlinks | pre-commit-hooks |
 | Recognizable private-key content | pre-commit-hooks |
 | Selected Markdown structure, syntax, and reference rules | markdownlint-cli2 |
 | Local Markdown link destinations and fragments | Linkinator |
-| Python lint and formatting, when Python files are present | Ruff |
 | GitHub Actions workflow syntax and expressions | actionlint |
 
 Private-key detection is limited; it is not a comprehensive secret scanner.

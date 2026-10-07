@@ -83,7 +83,7 @@ repo-template-specific note when establishing their own independent history.
 ## Changing validation
 
 `.pre-commit-config.yaml` owns tool selection and file scope. Markdown rules live
-in `.markdownlint-cli2.jsonc`; Python rules live in `ruff.toml`. Use the tools'
+in `.markdownlint-cli2.jsonc`. Use the tools'
 native configuration when project requirements change. Make exclusions explicit
 and explain substantive coverage reductions in the pull request.
 
