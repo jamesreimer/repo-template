@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { dirname, resolve, join } = require("node:path");
 const { test } = require("node:test");
@@ -67,4 +67,90 @@ test("fix mode reports but does not invent a closing position", (t) => {
   assert.equal(result.status, 1, result.output);
   assert.match(result.output, /example\.md:3.*error MDX001\//);
   assert.equal(readFileSync(result.file, "utf8"), content);
+});
+
+// Exercise the filename boundary with the actual configuration and CLI, including
+// paths that glob interpretation would silently omit or expand to other files.
+test("ordinary Markdown hook uses the literal-filename adapter", () => {
+  const parseYaml = require("markdownlint-cli2/parsers/yaml").default;
+  const config = parseYaml(readFileSync(join(root, ".pre-commit-config.yaml"), "utf8"));
+  const ordinaryHooks = config.repos
+    .filter((repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2")
+    .flatMap((repo) => repo.hooks)
+    .filter((hook) => hook.id === "markdownlint-cli2" && hook.alias !== "test-markdown-rules");
+  assert.equal(ordinaryHooks.length, 1, "Expected exactly one ordinary Markdown hook");
+  assert.equal(ordinaryHooks[0].entry, "node tools/markdownlint-files.cjs");
+});
+
+const literalNames = [
+  "ordinary.md",
+  "nested/deeper/new.md",
+  "meta[ab].md",
+  "choice{a,b}.md",
+  `deep${"{".repeat(48)}a,b${"}".repeat(48)}.md`,
+  "file with spaces.md",
+  "plus+(a).md",
+  "#hash.md",
+  "!bang.md",
+  // Windows filesystems reject colon and star in these filename positions.
+  ...(process.platform === "win32" ? [] : [":literal-name.md", "star*.md"])
+];
+
+function literalFixture(t) {
+  const dir = mkdtempSync(join(tmpdir(), "markdown-path-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  copyFileSync(configPath, join(dir, ".markdownlint-cli2.jsonc"));
+  mkdirSync(join(dir, "markdownlint-rules"));
+  copyFileSync(join(root, "markdownlint-rules/fenced-code-closed.cjs"),
+    join(dir, "markdownlint-rules/fenced-code-closed.cjs"));
+  return dir;
+}
+
+function lintLiteral(dir, names) {
+  const result = spawnSync(process.execPath,
+    [join(root, "tools/markdownlint-files.cjs"), ...names],
+    { cwd: dir, encoding: "utf8", timeout: 30000,
+      env: { ...process.env, NODE_PATH: process.env.NODE_PATH || dirname(cliRoot) } });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  return { ...result, output: result.stdout + result.stderr };
+}
+
+for (const name of literalNames) {
+  test(`literal Markdown path: ${name}`, (t) => {
+    const dir = literalFixture(t);
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    for (const valid of [true, false]) {
+      const content = valid ? "# Title\n" : "#Title\n";
+      writeFileSync(join(dir, name), content);
+      const result = lintLiteral(dir, [name]);
+      assert.equal(result.status, valid ? 0 : 1, result.output);
+      assert.match(result.stdout, /Linting: 1 file\n/);
+      assert.ok(result.stdout.includes(`Finding: :${name}\n`), result.output);
+      if (!valid) assert.ok(result.stderr.includes(`${name}:1:1 error MD018/`), result.output);
+      assert.equal(readFileSync(join(dir, name), "utf8"), content);
+    }
+  });
+}
+
+test("literal Markdown batch preserves every path and rejects one invalid sibling", (t) => {
+  const dir = literalFixture(t);
+  for (const name of literalNames) {
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    writeFileSync(join(dir, name), "# Title\n");
+  }
+  // A glob would select this invalid decoy when passed choice{a,b}.md.
+  writeFileSync(join(dir, "choicea.md"), "#Decoy\n");
+  const valid = lintLiteral(dir, literalNames);
+  assert.equal(valid.status, 0, valid.output);
+  assert.ok(valid.stdout.includes(`Linting: ${literalNames.length} files\n`), valid.output);
+  writeFileSync(join(dir, "choice{a,b}.md"), "#Title\n");
+  for (const names of [literalNames, [...literalNames].reverse()]) {
+    const result = lintLiteral(dir, names);
+    assert.equal(result.status, 1, result.output);
+    assert.ok(result.stdout.includes(`Linting: ${names.length} files\n`), result.output);
+    for (const name of names) assert.ok(result.stdout.includes(`:${name}`), result.output);
+    assert.ok(result.stderr.includes("choice{a,b}.md:1:1 error MD018/"), result.output);
+    assert.ok(!result.stderr.includes("choicea.md"), result.output);
+  }
 });
