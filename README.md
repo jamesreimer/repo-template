@@ -70,7 +70,9 @@ environments and requires network access. Link checking itself is offline.
 
 The same pre-commit configuration runs locally and in CI. Checks may fix
 whitespace or formatting; review those changes and rerun. `--all-files` checks
-Git-tracked files, so stage new files before running it.
+Git-tracked files for filename-based hooks, so stage new files before running
+it. The JavaScript and formatting scripts scan their configured repository scope,
+including untracked files.
 
 Optionally run checks when committing:
 
@@ -88,6 +90,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance and validation details.
 | JSON and YAML syntax | pre-commit-hooks |
 | Case-colliding paths and broken symlinks | pre-commit-hooks |
 | Recognizable private-key content | pre-commit-hooks |
+| JavaScript correctness and maintainability | ESLint |
+| Mechanical formatting of JavaScript, JSON/JSONC, YAML, and Markdown within explicit boundaries | Prettier |
 | Selected Markdown structure, syntax, and reference rules | markdownlint-cli2 |
 | Local Markdown link destinations and fragments | Linkinator |
 | GitHub Actions workflow syntax and expressions | actionlint |

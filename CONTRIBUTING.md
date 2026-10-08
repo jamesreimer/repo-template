@@ -26,7 +26,8 @@ git diff --check
 
 Hooks that fix files exit unsuccessfully until their changes are reviewed and
 included. Rerun after reviewing fixes. An installed commit hook checks staged
-files; the full command also catches effects on unchanged sources, such as
+files and runs the repository-wide quality scripts; the full command also catches
+effects on unchanged sources, such as
 links to a deleted target. Run the full command before opening a pull request.
 
 CI runs the same configuration on the checked-out commit. Required checks,
@@ -83,9 +84,21 @@ repo-template-specific note when establishing their own independent history.
 ## Changing validation
 
 `.pre-commit-config.yaml` owns tool selection and file scope. Markdown rules live
-in `.markdownlint-cli2.jsonc`. Use the tools'
-native configuration when project requirements change. Make exclusions explicit
+in `.markdownlint-cli2.jsonc`. Use the tools' native configuration when project requirements change. Make exclusions explicit
 and explain substantive coverage reductions in the pull request.
+
+ESLint owns JavaScript correctness and maintainability through `eslint.config.mjs`;
+Prettier owns mechanical formatting through `.prettierrc.json` and the format
+scripts in `package.json`. Run `npm run lint:js` and `npm run format:check` for
+focused checks. Both also run through pre-commit, using the repository-installed
+npm dependencies. Validation is check-only for these tools; run `npm run format`
+from this repository to apply formatting deliberately, then review the diff.
+
+Formatting covers JavaScript, JSON/JSONC, YAML, and Markdown. `.prettierignore`
+excludes the Python environment, npm-owned lockfile, digest-pinned link contract,
+and YAML parser fixture. Markdown prose wrapping is preserved and embedded
+examples are not reformatted. Existing syntax, Markdown, link, and workflow
+validators retain their semantic responsibilities.
 
 Linkinator checks Markdown links offline, including fragments. It runs as a
 fresh process through `tools/check-links.mjs`, with exact dependencies in
