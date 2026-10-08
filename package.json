@@ -18,7 +18,7 @@
     "test:links": "node --test tests/link-validation.test.mjs"
   },
   "engines": {
-    "node": ">=22.19.0"
+    "node": "24.18.1"
   },
   "devDependencies": {
     "markdownlint-cli2": "0.23.3"
