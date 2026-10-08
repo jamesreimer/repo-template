@@ -110,7 +110,11 @@ When changing a check or its scope, verify both that representative defects fail
 and that representative valid files pass in an isolated Git repository. Include
 new-file selection and the full CI command where relevant. The suite includes
 `tests/markdown-rules.test.cjs`, which exercises the local rule through the
-installed CLI and actual configuration in the same isolated hook environment.
+installed CLI and actual configuration from the same root npm-installed
+`markdownlint-cli2` package as the ordinary Markdown hook. The adapter preserves
+pre-commit-supplied literal filenames; pre-commit retains staged-file selection,
+batching, and unstaged-change stashing. No separate Markdown hook installation
+is created.
 Keep embedded Markdown examples, container boundaries, opening-line locations,
 and no-autofix behavior covered when updating the rule or its parser dependency.
 Projects should add tests for the additional behavior they own.
@@ -127,12 +131,16 @@ Review updates using:
 Review the resulting versions and configuration compatibility, then run the
 full suite. `requirements-dev.txt` pins the runner. npm owns the link checker,
 its explicit Marked dependency, the maintained front-matter stack, and the
-Markdownlint dependency used by its regression tests. Use `npm ci --ignore-scripts`
-locally and in CI. The lock preserves the full dependency resolution;
+Markdownlint dependency used by both the ordinary hook and its regression tests.
+Use `npm ci --ignore-scripts` locally and in CI. The lock preserves the full dependency resolution;
 pre-commit `additional_dependencies` cannot provide that transitive lock.
 The startup probe is still required: correctness must not depend on hoisting.
 Update pins and lock together, then run the regression suite and ordinary checks.
-Keep the test Markdownlint version aligned with its existing pre-commit hook.
+The package engine and `.npmrc` enforce exactly Node 24.18.1 at install time.
+CI also selects that exact runtime. Later local execution uses the system `node`
+on PATH; switching Node after installation is not guarded on each invocation.
+This accepted install-time enforcement replaces the Markdown hook's previous
+per-invocation nodeenv runtime selection.
 
 Dependabot proposes GitHub Actions, Python requirements, and npm dependency
 updates monthly. Hook revisions remain covered by `pre-commit autoupdate`.

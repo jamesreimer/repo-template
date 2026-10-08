@@ -2,26 +2,23 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } = require("node:fs");
 const { createRequire } = require("node:module");
 const { tmpdir } = require("node:os");
 const { dirname, resolve, join } = require("node:path");
 const { test } = require("node:test");
 
-// Run the installed CLI from the hook environment, using the real parser and the
-// repository's actual configuration. No copied parser or synthetic tokens.
-// pre-commit owns NODE_PATH. Select that installation explicitly so checkout
-// dependencies cannot shadow either the CLI or its exported YAML parser.
-if (!process.env.NODE_PATH) {
-  throw new Error("Run these tests through pre-commit run test-markdown-rules; its Node hook environment must supply NODE_PATH.");
-}
-const cliRoot = join(process.env.NODE_PATH, "markdownlint-cli2");
-const cliManifest = join(cliRoot, "package.json");
+// Exercise the real CLI, parser, and configuration from the same root npm
+// installation as the ordinary hook, independent of the caller's cwd.
+const root = resolve(__dirname, "..");
+const rootRequire = createRequire(join(root, "package.json"));
+const cliManifest = rootRequire.resolve("./node_modules/markdownlint-cli2/package.json");
+const cliRoot = dirname(cliManifest);
 const cliPackage = JSON.parse(readFileSync(cliManifest, "utf8"));
 const cli = resolve(cliRoot, cliPackage.bin["markdownlint-cli2"]);
-const hookRequire = createRequire(cliManifest);
+const cliRequire = createRequire(cliManifest);
+const yamlParser = cliRequire.resolve("markdownlint-cli2/parsers/yaml");
 
-const root = resolve(__dirname, "..");
 const configPath = join(root, ".markdownlint-cli2.jsonc");
 const cases = [
   ["literal fence in raw pre block", "# Title\n\n<pre>\n\n```sh\nliteral\n</pre>\n", []],
@@ -79,14 +76,29 @@ test("fix mode reports but does not invent a closing position", (t) => {
 // Exercise the filename boundary with the actual configuration and CLI, including
 // paths that glob interpretation would silently omit or expand to other files.
 test("ordinary Markdown hook uses the literal-filename adapter", () => {
-  const parseYaml = hookRequire("markdownlint-cli2/parsers/yaml").default;
+  const parseYaml = cliRequire("markdownlint-cli2/parsers/yaml").default;
   const config = parseYaml(readFileSync(join(root, ".pre-commit-config.yaml"), "utf8"));
   const ordinaryHooks = config.repos
-    .filter((repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2")
+    .filter((repo) => repo.repo === "local")
     .flatMap((repo) => repo.hooks)
-    .filter((hook) => hook.id === "markdownlint-cli2" && hook.alias !== "test-markdown-rules");
+    .filter((hook) => hook.id === "markdownlint-cli2");
   assert.equal(ordinaryHooks.length, 1, "Expected exactly one ordinary Markdown hook");
   assert.equal(ordinaryHooks[0].entry, "node tools/markdownlint-files.cjs");
+  assert.equal(ordinaryHooks[0].language, "system");
+  assert.deepEqual(ordinaryHooks[0].types, ["markdown"]);
+  assert.notEqual(ordinaryHooks[0].always_run, true);
+  assert.notEqual(ordinaryHooks[0].pass_filenames, false);
+  const testHooks = config.repos
+    .filter((repo) => repo.repo === "local")
+    .flatMap((repo) => repo.hooks)
+    .filter((hook) => hook.id === "test-markdown-rules");
+  assert.equal(testHooks.length, 1, "Expected exactly one Markdown-rule test hook");
+  assert.equal(testHooks[0].language, "system");
+  assert.equal(testHooks[0].entry, "node --test tests/markdown-rules.test.cjs");
+  assert.deepEqual(testHooks[0].types, ["file"]);
+  assert.equal(testHooks[0].always_run, true);
+  assert.equal(testHooks[0].pass_filenames, false);
+  assert.ok(!config.repos.some((repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2"));
 });
 
 const literalNames = [
@@ -159,4 +171,25 @@ test("literal Markdown batch preserves every path and rejects one invalid siblin
     assert.ok(result.stderr.includes("choice{a,b}.md:1:1 error MD018/"), result.output);
     assert.ok(!result.stderr.includes("choicea.md"), result.output);
   }
+});
+
+test("Markdown CLI and YAML parser belong to the root npm package", () => {
+  const expectedRoot = realpathSync(join(root, "node_modules/markdownlint-cli2"));
+  assert.equal(realpathSync(cliManifest), join(expectedRoot, "package.json"));
+  assert.equal(realpathSync(cli), resolve(expectedRoot, cliPackage.bin["markdownlint-cli2"]));
+  assert.equal(realpathSync(yamlParser), resolve(expectedRoot, cliPackage.exports["./parsers/yaml"]));
+});
+
+test("adapter fails closed when the root npm package is missing", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "markdown-missing-install-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  mkdirSync(join(dir, "tools"));
+  writeFileSync(join(dir, "package.json"), "{}\n");
+  copyFileSync(join(root, "tools/markdownlint-files.cjs"), join(dir, "tools/markdownlint-files.cjs"));
+  const result = spawnSync(process.execPath, [join(dir, "tools/markdownlint-files.cjs"), "example.md"],
+    { cwd: root, encoding: "utf8" });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Run npm ci --ignore-scripts before repository validation\./);
 });
