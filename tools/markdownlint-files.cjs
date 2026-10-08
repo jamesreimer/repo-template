@@ -15,7 +15,11 @@ const cli = resolve(cliRoot, pkg.bin["markdownlint-cli2"]);
 
 // ':' is the CLI's literal-file marker; '--' only stops option recognition.
 // Run its declared executable in this process, preserving streams and signals.
-process.argv = [process.execPath, cli, ...process.argv.slice(2).map((file) => `:${file}`)];
+process.argv = [
+  process.execPath,
+  cli,
+  ...process.argv.slice(2).map((file) => `:${file}`),
+];
 import(pathToFileURL(cli).href).catch((error) => {
   console.error(error);
   process.exitCode = 2;

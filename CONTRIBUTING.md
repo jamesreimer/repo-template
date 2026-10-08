@@ -27,8 +27,8 @@ git diff --check
 Hooks that fix files exit unsuccessfully until their changes are reviewed and
 included. Rerun after reviewing fixes. An installed commit hook checks staged
 files and runs the repository-wide quality scripts; the full command also catches
-effects on unchanged sources, such as
-links to a deleted target. Run the full command before opening a pull request.
+effects on unchanged sources, such as links to a deleted target. Run the full
+command before opening a pull request.
 
 CI runs the same configuration on the checked-out commit. Required checks,
 review counts, merge strategy, and permissions belong to the repository's host
@@ -84,8 +84,9 @@ repo-template-specific note when establishing their own independent history.
 ## Changing validation
 
 `.pre-commit-config.yaml` owns tool selection and file scope. Markdown rules live
-in `.markdownlint-cli2.jsonc`. Use the tools' native configuration when project requirements change. Make exclusions explicit
-and explain substantive coverage reductions in the pull request.
+in `.markdownlint-cli2.jsonc`. Use the tools' native configuration when project
+requirements change. Make exclusions explicit and explain substantive coverage
+reductions in the pull request.
 
 ESLint owns JavaScript correctness and maintainability through `eslint.config.mjs`;
 Prettier owns mechanical formatting through `.prettierrc.json` and the format
@@ -140,7 +141,8 @@ Review updates using:
 Review the resulting versions and configuration compatibility, then run the
 full suite. `requirements-dev.txt` pins the runner. npm owns the link checker,
 its explicit Marked dependency, the maintained front-matter stack, and the
-Markdownlint dependency used by its regression tests. Use `npm ci --ignore-scripts`
+Markdownlint dependency used by its regression tests, ESLint, and Prettier.
+Use `npm ci --ignore-scripts`
 locally and in CI. The lock preserves the full dependency resolution;
 pre-commit `additional_dependencies` cannot provide that transitive lock.
 The startup probe is still required: correctness must not depend on hoisting.

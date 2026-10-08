@@ -15,12 +15,12 @@ module.exports = {
         if (token.type === "htmlFlow") continue;
         if (token.type === "codeFenced") {
           const fences = token.children.filter(
-            (child) => child.type === "codeFencedFence"
+            (child) => child.type === "codeFencedFence",
           );
           if (fences.length === 1) {
             onError({
               lineNumber: fences[0].startLine,
-              detail: "Code fence opened here has no explicit closing fence"
+              detail: "Code fence opened here has no explicit closing fence",
             });
           }
         }
@@ -28,5 +28,5 @@ module.exports = {
       }
     };
     visit(params.parsers.micromark.tokens);
-  }
+  },
 };

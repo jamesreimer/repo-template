@@ -2,7 +2,14 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { createRequire } = require("node:module");
 const { tmpdir } = require("node:os");
 const { dirname, resolve, join } = require("node:path");
@@ -13,7 +20,9 @@ const { test } = require("node:test");
 // pre-commit owns NODE_PATH. Select that installation explicitly so checkout
 // dependencies cannot shadow either the CLI or its exported YAML parser.
 if (!process.env.NODE_PATH) {
-  throw new Error("Run these tests through pre-commit run test-markdown-rules; its Node hook environment must supply NODE_PATH.");
+  throw new Error(
+    "Run these tests through pre-commit run test-markdown-rules; its Node hook environment must supply NODE_PATH.",
+  );
 }
 const cliRoot = join(process.env.NODE_PATH, "markdownlint-cli2");
 const cliManifest = join(cliRoot, "package.json");
@@ -24,25 +33,65 @@ const hookRequire = createRequire(cliManifest);
 const root = resolve(__dirname, "..");
 const configPath = join(root, ".markdownlint-cli2.jsonc");
 const cases = [
-  ["literal fence in raw pre block", "# Title\n\n<pre>\n\n```sh\nliteral\n</pre>\n", []],
-  ["fence after HTML flow ends", "# Title\n\n<details>\n<summary>Example</summary>\n\n```sh\ncode\n", [6]],
-  ["balanced literal fence in tight HTML", "# Title\n\n<details>\n```sh\ncode\n```\n</details>\n", []],
+  [
+    "literal fence in raw pre block",
+    "# Title\n\n<pre>\n\n```sh\nliteral\n</pre>\n",
+    [],
+  ],
+  [
+    "fence after HTML flow ends",
+    "# Title\n\n<details>\n<summary>Example</summary>\n\n```sh\ncode\n",
+    [6],
+  ],
+  [
+    "balanced literal fence in tight HTML",
+    "# Title\n\n<details>\n```sh\ncode\n```\n</details>\n",
+    [],
+  ],
   ["closed backticks", "# Title\n\n```sh\necho ok\n```\n", []],
   ["closed tildes", "# Title\n\n~~~sh\necho ok\n~~~\n", []],
   ["longer closing fence", "# Title\n\n```sh\necho ok\n`````\n", []],
-  ["embedded closed example", "# Title\n\n````markdown\n```sh\necho ok\n```\n````\n", []],
-  ["embedded unclosed example", "# Title\n\n````markdown\n```sh\necho ok\n````\n", []],
+  [
+    "embedded closed example",
+    "# Title\n\n````markdown\n```sh\necho ok\n```\n````\n",
+    [],
+  ],
+  [
+    "embedded unclosed example",
+    "# Title\n\n````markdown\n```sh\necho ok\n````\n",
+    [],
+  ],
   ["closed blockquote", "# Title\n\n> ```sh\n> echo ok\n> ```\n", []],
   ["closed list", "# Title\n\n- Item\n\n  ```sh\n  echo ok\n  ```\n", []],
-  ["inline and indented code", "# Title\n\nInline `code` and ``a ` b``.\n\n    ```\n", []],
+  [
+    "inline and indented code",
+    "# Title\n\nInline `code` and ``a ` b``.\n\n    ```\n",
+    [],
+  ],
   ["missing closer", "# Title\n\n```sh\necho ok\n", [3]],
-  ["short inner closer cannot close outer", "# Title\n\n````markdown\n```sh\necho ok\n```\n", [3]],
+  [
+    "short inner closer cannot close outer",
+    "# Title\n\n````markdown\n```sh\necho ok\n```\n",
+    [3],
+  ],
   ["mixed markers do not close", "# Title\n\n```sh\necho ok\n~~~\n", [3]],
   ["unclosed blockquote", "# Title\n\n> ```sh\n> echo ok\n\nOutside.\n", [3]],
-  ["unclosed list", "# Title\n\n- Item\n\n  ```sh\n  echo ok\n\nOutside.\n", [5]],
+  [
+    "unclosed list",
+    "# Title\n\n- Item\n\n  ```sh\n  echo ok\n\nOutside.\n",
+    [5],
+  ],
   ["second block unclosed", "# Title\n\n```sh\nok\n```\n\n```sh\nmore\n", [7]],
-  ["absorbed links", "# Title\n\n```sh\n[missing](absent.md)\n[fragment](#absent)\n", [3]],
-  ["front matter line offset", "---\ntitle: Example\n---\n\n# Title\n\n```sh\ncode\n", [7]]
+  [
+    "absorbed links",
+    "# Title\n\n```sh\n[missing](absent.md)\n[fragment](#absent)\n",
+    [3],
+  ],
+  [
+    "front matter line offset",
+    "---\ntitle: Example\n---\n\n# Title\n\n```sh\ncode\n",
+    [7],
+  ],
 ];
 
 function lint(t, content, fix = false) {
@@ -51,7 +100,10 @@ function lint(t, content, fix = false) {
   const file = join(dir, "example.md");
   writeFileSync(file, content);
   const args = [cli, "--config", configPath, ...(fix ? ["--fix"] : []), file];
-  const result = spawnSync(process.execPath, args, { cwd: root, encoding: "utf8" });
+  const result = spawnSync(process.execPath, args, {
+    cwd: root,
+    encoding: "utf8",
+  });
   assert.ifError(result.error);
   assert.equal(result.signal, null);
   return { ...result, output: result.stdout + result.stderr, file };
@@ -61,8 +113,9 @@ for (const [name, content, expectedLines] of cases) {
   test(name, (t) => {
     const result = lint(t, content);
     assert.equal(result.status, expectedLines.length ? 1 : 0, result.output);
-    const actualLines = [...result.output.matchAll(/example\.md:(\d+)(?::\d+)? error MDX001\//g)]
-      .map((match) => Number(match[1]));
+    const actualLines = [
+      ...result.output.matchAll(/example\.md:(\d+)(?::\d+)? error MDX001\//g),
+    ].map((match) => Number(match[1]));
     assert.deepEqual(actualLines, expectedLines, result.output);
     assert.equal(readFileSync(result.file, "utf8"), content);
   });
@@ -80,12 +133,23 @@ test("fix mode reports but does not invent a closing position", (t) => {
 // paths that glob interpretation would silently omit or expand to other files.
 test("ordinary Markdown hook uses the literal-filename adapter", () => {
   const parseYaml = hookRequire("markdownlint-cli2/parsers/yaml").default;
-  const config = parseYaml(readFileSync(join(root, ".pre-commit-config.yaml"), "utf8"));
+  const config = parseYaml(
+    readFileSync(join(root, ".pre-commit-config.yaml"), "utf8"),
+  );
   const ordinaryHooks = config.repos
-    .filter((repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2")
+    .filter(
+      (repo) => repo.repo === "https://github.com/DavidAnson/markdownlint-cli2",
+    )
     .flatMap((repo) => repo.hooks)
-    .filter((hook) => hook.id === "markdownlint-cli2" && hook.alias !== "test-markdown-rules");
-  assert.equal(ordinaryHooks.length, 1, "Expected exactly one ordinary Markdown hook");
+    .filter(
+      (hook) =>
+        hook.id === "markdownlint-cli2" && hook.alias !== "test-markdown-rules",
+    );
+  assert.equal(
+    ordinaryHooks.length,
+    1,
+    "Expected exactly one ordinary Markdown hook",
+  );
   assert.equal(ordinaryHooks[0].entry, "node tools/markdownlint-files.cjs");
 });
 
@@ -100,7 +164,7 @@ const literalNames = [
   "#hash.md",
   "!bang.md",
   // Windows filesystems reject colon and star in these filename positions.
-  ...(process.platform === "win32" ? [] : [":literal-name.md", "star*.md"])
+  ...(process.platform === "win32" ? [] : [":literal-name.md", "star*.md"]),
 ];
 
 function literalFixture(t) {
@@ -108,15 +172,19 @@ function literalFixture(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   copyFileSync(configPath, join(dir, ".markdownlint-cli2.jsonc"));
   mkdirSync(join(dir, "markdownlint-rules"));
-  copyFileSync(join(root, "markdownlint-rules/fenced-code-closed.cjs"),
-    join(dir, "markdownlint-rules/fenced-code-closed.cjs"));
+  copyFileSync(
+    join(root, "markdownlint-rules/fenced-code-closed.cjs"),
+    join(dir, "markdownlint-rules/fenced-code-closed.cjs"),
+  );
   return dir;
 }
 
 function lintLiteral(dir, names) {
-  const result = spawnSync(process.execPath,
+  const result = spawnSync(
+    process.execPath,
     [join(root, "tools/markdownlint-files.cjs"), ...names],
-    { cwd: dir, encoding: "utf8", timeout: 30000 });
+    { cwd: dir, encoding: "utf8", timeout: 30000 },
+  );
   assert.ifError(result.error);
   assert.equal(result.signal, null);
   return { ...result, output: result.stdout + result.stderr };
@@ -133,7 +201,11 @@ for (const name of literalNames) {
       assert.equal(result.status, valid ? 0 : 1, result.output);
       assert.match(result.stdout, /Linting: 1 file\n/);
       assert.ok(result.stdout.includes(`Finding: :${name}\n`), result.output);
-      if (!valid) assert.ok(result.stderr.includes(`${name}:1:1 error MD018/`), result.output);
+      if (!valid)
+        assert.ok(
+          result.stderr.includes(`${name}:1:1 error MD018/`),
+          result.output,
+        );
       assert.equal(readFileSync(join(dir, name), "utf8"), content);
     }
   });
@@ -149,14 +221,24 @@ test("literal Markdown batch preserves every path and rejects one invalid siblin
   writeFileSync(join(dir, "choicea.md"), "#Decoy\n");
   const valid = lintLiteral(dir, literalNames);
   assert.equal(valid.status, 0, valid.output);
-  assert.ok(valid.stdout.includes(`Linting: ${literalNames.length} files\n`), valid.output);
+  assert.ok(
+    valid.stdout.includes(`Linting: ${literalNames.length} files\n`),
+    valid.output,
+  );
   writeFileSync(join(dir, "choice{a,b}.md"), "#Title\n");
   for (const names of [literalNames, [...literalNames].reverse()]) {
     const result = lintLiteral(dir, names);
     assert.equal(result.status, 1, result.output);
-    assert.ok(result.stdout.includes(`Linting: ${names.length} files\n`), result.output);
-    for (const name of names) assert.ok(result.stdout.includes(`:${name}`), result.output);
-    assert.ok(result.stderr.includes("choice{a,b}.md:1:1 error MD018/"), result.output);
+    assert.ok(
+      result.stdout.includes(`Linting: ${names.length} files\n`),
+      result.output,
+    );
+    for (const name of names)
+      assert.ok(result.stdout.includes(`:${name}`), result.output);
+    assert.ok(
+      result.stderr.includes("choice{a,b}.md:1:1 error MD018/"),
+      result.output,
+    );
     assert.ok(!result.stderr.includes("choicea.md"), result.output);
   }
 });
