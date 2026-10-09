@@ -15,12 +15,18 @@
   "name": "repo-template-validation",
   "private": true,
   "scripts": {
-    "test:links": "node --test tests/link-validation.test.mjs"
+    "test:links": "node --test tests/link-validation.test.mjs",
+    "lint:js": "eslint . --max-warnings=0",
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs,json,jsonc,yml,yaml,md}\"",
+    "format": "prettier --write \"**/*.{js,mjs,cjs,json,jsonc,yml,yaml,md}\""
   },
   "engines": {
     "node": "24.18.1"
   },
   "devDependencies": {
-    "markdownlint-cli2": "0.23.3"
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "markdownlint-cli2": "0.23.3",
+    "prettier": "3.9.9"
   }
 }
