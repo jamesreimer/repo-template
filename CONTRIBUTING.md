@@ -99,10 +99,11 @@ The full tracked-repository validation path remains
 For focused checks, run `.venv/bin/pre-commit run lint-js --all-files` or
 `.venv/bin/pre-commit run format-check --all-files`; use `--files path/to/file.mjs`
 instead of `--all-files` to select particular files deliberately. The manual
-`npm run lint:js` and `npm run format:check` convenience scripts scan their
+`npm run lint:js` and `npm run format:check` convenience check commands scan their
 configured working-tree scope, including untracked files. They do not transport
-commit-time filenames. Run `npm run format` to apply formatting deliberately,
-then review the diff. Validation itself does not apply ESLint or Prettier fixes.
+commit-time filenames. Apply formatting deliberately with an appropriate editor
+or tool invocation, then review the diff as an ordinary change. Validation itself
+does not apply ESLint or Prettier fixes.
 
 Formatting excludes the npm-owned lockfile, digest-pinned link contract, and
 YAML parser fixture. `.prettierignore` also excludes `.venv/` for manual scans;

@@ -17,8 +17,7 @@
   "scripts": {
     "test:links": "node --test tests/link-validation.test.mjs",
     "lint:js": "eslint . --max-warnings=0",
-    "format:check": "prettier --check \"**/*.{js,mjs,cjs,json,jsonc,yml,yaml,md}\"",
-    "format": "prettier --write \"**/*.{js,mjs,cjs,json,jsonc,yml,yaml,md}\""
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs,json,jsonc,yml,yaml,md}\""
   },
   "engines": {
     "node": "24.18.1"
