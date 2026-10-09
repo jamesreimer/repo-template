@@ -10,16 +10,24 @@ const { pathToFileURL } = require("node:url");
 const rootRequire = createRequire(join(__dirname, "..", "package.json"));
 let cli;
 try {
-  const manifest = rootRequire.resolve("./node_modules/markdownlint-cli2/package.json");
+  const manifest = rootRequire.resolve(
+    "./node_modules/markdownlint-cli2/package.json",
+  );
   const pkg = JSON.parse(readFileSync(manifest, "utf8"));
   cli = resolve(dirname(manifest), pkg.bin["markdownlint-cli2"]);
 } catch (error) {
-  throw new Error("Run npm ci --ignore-scripts before repository validation.", { cause: error });
+  throw new Error("Run npm ci --ignore-scripts before repository validation.", {
+    cause: error,
+  });
 }
 
 // ':' is the CLI's literal-file marker; '--' only stops option recognition.
 // Run its declared executable in this process, preserving streams and signals.
-process.argv = [process.execPath, cli, ...process.argv.slice(2).map((file) => `:${file}`)];
+process.argv = [
+  process.execPath,
+  cli,
+  ...process.argv.slice(2).map((file) => `:${file}`),
+];
 import(pathToFileURL(cli).href).catch((error) => {
   console.error(error);
   process.exitCode = 2;

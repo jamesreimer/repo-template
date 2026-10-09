@@ -1,0 +1,4 @@
+.venv/
+package-lock.json
+tests/link-validation/contract.json
+tests/fixtures/yaml-stream.yaml

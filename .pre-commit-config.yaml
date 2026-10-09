@@ -20,6 +20,23 @@ repos:
 
   - repo: local
     hooks:
+      - id: lint-js
+        name: Check JavaScript with ESLint
+        language: system
+        entry: node node_modules/eslint/bin/eslint.js --max-warnings=0 --
+        files: \.(js|cjs|mjs)$
+      - id: format-check
+        name: Check formatting with Prettier
+        language: system
+        entry: node node_modules/prettier/bin/prettier.cjs --check --
+        files: \.(js|cjs|mjs|json|jsonc|yaml|yml|md)$
+        exclude: ^(package-lock\.json|tests/link-validation/contract\.json|tests/fixtures/yaml-stream\.yaml)$
+      - id: test-quality-hooks
+        name: Test quality hook boundaries
+        language: system
+        entry: node --test tests/quality-hooks.test.mjs
+        always_run: true
+        pass_filenames: false
       - id: markdownlint-cli2
         name: markdownlint-cli2
         language: system

@@ -87,6 +87,33 @@ in `.markdownlint-cli2.jsonc`. Use the tools'
 native configuration when project requirements change. Make exclusions explicit
 and explain substantive coverage reductions in the pull request.
 
+ESLint owns JavaScript correctness and maintainability through `eslint.config.mjs`.
+Prettier owns mechanical formatting for JavaScript, JSON/JSONC, YAML, and Markdown
+through `.prettierrc.json`. Both checks run as filename-driven local/system
+pre-commit hooks: pre-commit passes selected filenames directly to the root
+npm-installed package CLIs. The `--` separators protect option-like filenames.
+At commit time, pre-commit hides unstaged edits and checks selected staged files.
+The full tracked-repository validation path remains
+`pre-commit run --all-files --show-diff-on-failure`.
+
+For focused checks, run `.venv/bin/pre-commit run lint-js --all-files` or
+`.venv/bin/pre-commit run format-check --all-files`; use `--files path/to/file.mjs`
+instead of `--all-files` to select particular files deliberately. The manual
+`npm run lint:js` and `npm run format:check` convenience check commands scan their
+configured working-tree scope, including untracked files. They do not transport
+commit-time filenames. Apply formatting deliberately with an appropriate editor
+or tool invocation, then review the diff as an ordinary change. Validation itself
+does not apply ESLint or Prettier fixes.
+
+Formatting excludes the npm-owned lockfile, digest-pinned link contract, and
+YAML parser fixture. `.prettierignore` also excludes `.venv/` for manual scans;
+the pre-commit format hook explicitly excludes the tracked fixture/lock paths.
+Markdown prose wrapping stays at Prettier's preserve default, and embedded
+examples are not reformatted. Existing syntax, Markdown, link, and workflow
+validators retain their semantic responsibilities. `tests/quality-hooks.test.mjs`
+protects the direct CLI wiring and literal-filename boundary, including the
+brace/decoy regression that rejects npm script-shell transport.
+
 Linkinator checks Markdown links offline, including fragments. It runs as a
 fresh process through `tools/check-links.mjs`, with exact dependencies in
 `package.json` and `package-lock.json`. A startup probe verifies that front matter
@@ -131,7 +158,8 @@ Review updates using:
 Review the resulting versions and configuration compatibility, then run the
 full suite. `requirements-dev.txt` pins the runner. npm owns the link checker,
 its explicit Marked dependency, the maintained front-matter stack, and the
-Markdownlint dependency used by both the ordinary hook and its regression tests.
+Markdownlint dependency used by both the ordinary hook and its regression tests,
+ESLint, and Prettier.
 Use `npm ci --ignore-scripts` locally and in CI. The lock preserves the full dependency resolution;
 pre-commit `additional_dependencies` cannot provide that transitive lock.
 The startup probe is still required: correctness must not depend on hoisting.

@@ -82,15 +82,17 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for maintenance and validation details.
 
 ## What is checked
 
-| Responsibility | Tool |
-| --- | --- |
-| Merge markers, file endings, trailing whitespace, and mixed line endings | pre-commit-hooks |
-| JSON and YAML syntax | pre-commit-hooks |
-| Case-colliding paths and broken symlinks | pre-commit-hooks |
-| Recognizable private-key content | pre-commit-hooks |
-| Selected Markdown structure, syntax, and reference rules | markdownlint-cli2 |
-| Local Markdown link destinations and fragments | Linkinator |
-| GitHub Actions workflow syntax and expressions | actionlint |
+| Responsibility                                                                                 | Tool              |
+| ---------------------------------------------------------------------------------------------- | ----------------- |
+| Merge markers, file endings, trailing whitespace, and mixed line endings                       | pre-commit-hooks  |
+| JSON and YAML syntax                                                                           | pre-commit-hooks  |
+| Case-colliding paths and broken symlinks                                                       | pre-commit-hooks  |
+| Recognizable private-key content                                                               | pre-commit-hooks  |
+| JavaScript correctness and maintainability                                                     | ESLint            |
+| Mechanical formatting of JavaScript, JSON/JSONC, YAML, and Markdown within explicit boundaries | Prettier          |
+| Selected Markdown structure, syntax, and reference rules                                       | markdownlint-cli2 |
+| Local Markdown link destinations and fragments                                                 | Linkinator        |
+| GitHub Actions workflow syntax and expressions                                                 | actionlint        |
 
 Private-key detection is limited; it is not a comprehensive secret scanner.
 External URLs are not checked. Offline link checking does not render a website

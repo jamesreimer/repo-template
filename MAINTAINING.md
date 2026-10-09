@@ -93,6 +93,7 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    discovered after publication, use the reviewed successor correction path
    below. Preserve the post-publication date verification below. A prepared changelog
    section does not authorize publication.
+
 3. Select the intended release commit from reviewed, merged work on `main`.
    Record its full commit SHA and check it out for validation. Review the changes
    since the previous release, including documentation, dependency updates, and
@@ -114,6 +115,7 @@ including `v1.0.2`; do not rewrite them to normalize tag type.
    Require passing checks and a clean working tree. If checks fix files or a
    defect needs correction, submit the change through the contribution workflow
    and select and validate the resulting merged commit before proceeding.
+
 5. Recheck that the chosen version is unused in local/remote tags and GitHub
    Releases. Prepare release notes summarizing the release delta from
    `CHANGELOG.md` and detailed Git, pull request, and issue evidence. Keep the
