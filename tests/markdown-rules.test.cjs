@@ -92,7 +92,7 @@ const cases = [
   ],
 ];
 
-function lint(t, content, fix = false) {
+function lint(t, content, { fix = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "markdown-rule-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const file = join(dir, "example.md");
@@ -101,10 +101,12 @@ function lint(t, content, fix = false) {
   const result = spawnSync(process.execPath, args, {
     cwd: root,
     encoding: "utf8",
+    timeout: 30000,
   });
-  assert.ifError(result.error);
-  assert.equal(result.signal, null);
-  return { ...result, output: result.stdout + result.stderr, file };
+  const output = result.stdout + result.stderr;
+  assert.equal(result.error, undefined, output);
+  assert.equal(result.signal, null, output);
+  return { ...result, output, file };
 }
 
 for (const [name, content, expectedLines] of cases) {
@@ -121,7 +123,7 @@ for (const [name, content, expectedLines] of cases) {
 
 test("fix mode reports but does not invent a closing position", (t) => {
   const content = "# Title\n\n```sh\necho ok\n\nPossibly intended prose.\n";
-  const result = lint(t, content, true);
+  const result = lint(t, content, { fix: true });
   assert.equal(result.status, 1, result.output);
   assert.match(result.output, /example\.md:3.*error MDX001\//);
   assert.equal(readFileSync(result.file, "utf8"), content);
@@ -201,9 +203,10 @@ function lintLiteral(dir, names) {
     [join(root, "tools/markdownlint-files.cjs"), ...names],
     { cwd: dir, encoding: "utf8", timeout: 30000 },
   );
-  assert.ifError(result.error);
-  assert.equal(result.signal, null);
-  return { ...result, output: result.stdout + result.stderr };
+  const output = result.stdout + result.stderr;
+  assert.equal(result.error, undefined, output);
+  assert.equal(result.signal, null, output);
+  return { ...result, output };
 }
 
 for (const name of literalNames) {
@@ -286,10 +289,11 @@ test("adapter fails closed when the root npm package is missing", (t) => {
   const result = spawnSync(
     process.execPath,
     [join(dir, "tools/markdownlint-files.cjs"), "example.md"],
-    { cwd: root, encoding: "utf8" },
+    { cwd: root, encoding: "utf8", timeout: 30000 },
   );
-  assert.ifError(result.error);
-  assert.equal(result.signal, null);
+  const output = result.stdout + result.stderr;
+  assert.equal(result.error, undefined, output);
+  assert.equal(result.signal, null, output);
   assert.notEqual(result.status, 0);
   assert.match(
     result.stderr,
