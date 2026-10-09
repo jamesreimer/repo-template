@@ -38,7 +38,7 @@ const lint = join(
   "node_modules/markdownlint-cli2",
   lintPackage.bin["markdownlint-cli2"],
 );
-function fixture(t, files) {
+function createFixture(t, files) {
   const dir = mkdtempSync(join(tmpdir(), "link-regression-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   for (const [name, content] of Object.entries(files)) {
@@ -47,73 +47,90 @@ function fixture(t, files) {
   }
   return dir;
 }
-function run(dir, paths, mode) {
-  const result = spawnSync(
-    process.execPath,
-    [...(mode ? ["--import", control] : []), cli, ...paths],
-    {
-      cwd: dir,
-      encoding: "utf8",
-      timeout: 30000,
-      env: { ...process.env, LINK_TEST_CONTROL: mode || "" },
-    },
-  );
-  assert.ifError(result.error);
-  assert.equal(result.signal, null);
-  return result;
+function runNode(dir, args, env = process.env) {
+  const result = spawnSync(process.execPath, args, {
+    cwd: dir,
+    encoding: "utf8",
+    timeout: 30000,
+    env,
+  });
+  const output = result.stdout + result.stderr;
+  assert.equal(result.error, undefined, output);
+  assert.equal(result.signal, null, output);
+  return { ...result, output };
 }
-for (const c of contract.cases) {
-  test(`Link contract: ${c.name}`, (t) => {
-    const dir = fixture(t, c.files);
-    const before = Object.keys(c.files).map((f) => readFileSync(join(dir, f)));
-    const result = run(dir, c.inputs);
+function checkLinks(dir, paths, mode) {
+  return runNode(dir, [...(mode ? ["--import", control] : []), cli, ...paths], {
+    ...process.env,
+    LINK_TEST_CONTROL: mode || "",
+  });
+}
+for (const contractCase of contract.cases) {
+  test(`Link contract: ${contractCase.name}`, (t) => {
+    const dir = createFixture(t, contractCase.files);
+    const originalContents = new Map(
+      Object.keys(contractCase.files).map((file) => [
+        file,
+        readFileSync(join(dir, file)),
+      ]),
+    );
+    const result = checkLinks(dir, contractCase.inputs);
     // Local acceptance is checked independently of external URLs, which are skipped.
     assert.equal(
       result.status,
-      c.expected_local ? 0 : 1,
-      result.stdout + result.stderr,
+      contractCase.expected_local ? 0 : 1,
+      result.output,
     );
-    const data = JSON.parse(result.stdout);
-    for (const link of data.result.links.filter((link) =>
+    const report = JSON.parse(result.stdout);
+    for (const link of report.result.links.filter((link) =>
       /^https?:/.test(link.url),
     )) {
       assert.equal(link.state, "SKIPPED", JSON.stringify(link));
     }
-    if (c.name.startsWith("yaml-") || c.name === "cross-malformed-metadata") {
-      assert.ok(data.yamlErrors.length, result.stdout);
+    if (
+      contractCase.name.startsWith("yaml-") ||
+      contractCase.name === "cross-malformed-metadata"
+    ) {
+      assert.ok(report.yamlErrors.length, result.stdout);
     }
-    const authoring = spawnSync(
-      process.execPath,
-      [lint, "--config", join(root, ".markdownlint-cli2.jsonc"), ...c.inputs],
-      { cwd: dir, encoding: "utf8", timeout: 30000 },
-    );
-    assert.ifError(authoring.error);
+    const authoring = runNode(dir, [
+      lint,
+      "--config",
+      join(root, ".markdownlint-cli2.jsonc"),
+      ...contractCase.inputs,
+    ]);
     assert.equal(
-      authoring.status === 0,
-      c.expected_lint,
-      authoring.stdout + authoring.stderr,
+      authoring.status,
+      contractCase.expected_lint ? 0 : 1,
+      authoring.output,
     );
-    if (c.owner === "markdownlint") assert.match(authoring.stderr, /MDX001/);
-    if (c.name === "dual-name-same") {
+    if (contractCase.owner === "markdownlint")
+      assert.match(authoring.stderr, /error MDX001\//);
+    if (contractCase.name === "dual-name-same") {
       assert.equal(result.status, 0);
     }
-    Object.keys(c.files).forEach((f, index) =>
-      assert.deepEqual(readFileSync(join(dir, f)), before[index]),
-    );
+    for (const [file, originalContent] of originalContents) {
+      assert.deepEqual(readFileSync(join(dir, file)), originalContent);
+    }
   });
 }
 const phantom =
   "---\nprobe: phantom\n---\n\n# Body\n\n[metadata](#probe-phantom)\n";
 test("single-key phantom: effective hook rejects metadata destination", (t) => {
-  const dir = fixture(t, { "source.md": phantom });
-  const result = run(dir, ["source.md"]);
+  const dir = createFixture(t, { "source.md": phantom });
+  const result = checkLinks(dir, ["source.md"]);
   assert.equal(result.status, 1, result.stderr);
-  assert.match(result.stdout, /probe-phantom.*not found/);
+  const phantomLink = JSON.parse(result.stdout).result.links.find(
+    (link) => link.url === "source.md#probe-phantom",
+  );
+  assert.ok(phantomLink, result.output);
+  assert.equal(phantomLink.state, "BROKEN", result.output);
+  assert.equal(phantomLink.status, 200, result.output);
 });
 for (const mode of ["disabled", "isolated"]) {
   test(`startup fails closed with ${mode} hook before reading repository input`, (t) => {
-    const dir = fixture(t, { "source.md": phantom });
-    const result = run(dir, ["does-not-exist.md"], mode);
+    const dir = createFixture(t, { "source.md": phantom });
+    const result = checkLinks(dir, ["does-not-exist.md"], mode);
     assert.equal(result.status, 2);
     assert.match(result.stderr, /startup self-check failed/);
     assert.equal(result.stdout, "");
@@ -121,48 +138,47 @@ for (const mode of ["disabled", "isolated"]) {
   });
 }
 test("double registration preserves body and metadata isolation", (t) => {
-  for (const [content, code] of [
+  for (const [content, expectedStatus] of [
     [phantom, 1],
     [phantom.replace("#probe-phantom", "#body"), 0],
   ]) {
-    const dir = fixture(t, { "source.md": content });
-    const result = run(dir, ["source.md"], "double");
-    assert.equal(result.status, code, result.stdout + result.stderr);
+    const dir = createFixture(t, { "source.md": content });
+    const result = checkLinks(dir, ["source.md"], "double");
+    assert.equal(result.status, expectedStatus, result.output);
   }
 });
 test("fresh CLI invocations are deterministic", (t) => {
-  const dir = fixture(t, { "source.md": phantom });
-  const results = Array.from({ length: 3 }, () => run(dir, ["source.md"]));
+  const dir = createFixture(t, { "source.md": phantom });
+  const results = Array.from({ length: 3 }, () =>
+    checkLinks(dir, ["source.md"]),
+  );
   assert.ok(results.every((r) => r.status === 1));
   assert.equal(results[0].stdout, results[1].stdout);
   assert.equal(results[1].stdout, results[2].stdout);
 });
 test("batch diagnostics name both original malformed files", (t) => {
-  const dir = fixture(t, {
+  const dir = createFixture(t, {
     "first.md": "---\na: [broken\n---\n",
     "second.md": "---\na: 1\na: 2\n---\n",
   });
-  const result = run(dir, ["first.md", "second.md"]);
+  const result = checkLinks(dir, ["first.md", "second.md"]);
   assert.equal(result.status, 1, result.stderr);
-  const data = JSON.parse(result.stdout);
+  const report = JSON.parse(result.stdout);
   assert.deepEqual(
-    data.result.links
-      .filter((l) => l.state === "BROKEN")
-      .map((l) => l.url)
+    report.result.links
+      .filter((link) => link.state === "BROKEN")
+      .map((link) => link.url)
       .sort(),
     ["first.md", "second.md"],
   );
-  assert.equal(data.yamlErrors.length, 2);
+  assert.equal(report.yamlErrors.length, 2);
 });
 test("native hook-disabled control exposes phantom-anchor false green", (t) => {
-  const dir = fixture(t, { "source.md": phantom });
-  const result = spawnSync(
-    process.execPath,
-    [join(root, "tests/link-validation/native-control.mjs")],
-    { cwd: dir, encoding: "utf8", timeout: 30000 },
-  );
-  assert.ifError(result.error);
-  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const dir = createFixture(t, { "source.md": phantom });
+  const result = runNode(dir, [
+    join(root, "tests/link-validation/native-control.mjs"),
+  ]);
+  assert.equal(result.status, 0, result.output);
   assert.equal(JSON.parse(result.stdout).passed, true);
 });
 
@@ -198,37 +214,42 @@ const directoryCases = [
     target: "docs/#absent",
   },
 ];
-for (const c of directoryCases) {
-  test(`directory contract: ${c.name}`, (t) => {
-    const input = c.input || "source.md";
+for (const directoryCase of directoryCases) {
+  test(`directory contract: ${directoryCase.name}`, (t) => {
+    const input = directoryCase.input || "source.md";
     const files = {
       "docs/file.md": "# File\n",
       "docs/nested/keep.txt": "nested\n",
       "space dir/keep.txt": "space\n",
       "café/keep.txt": "unicode\n",
       "indexed/index.html": '<h1 id="present">Present</h1>\n',
-      [input]: `# Source\n\n[directory case](${c.target})\n\n[external](https://example.invalid/)\n`,
+      [input]: `# Source\n\n[directory case](${directoryCase.target})\n\n[external](https://example.invalid/)\n`,
     };
-    const dir = fixture(t, files);
+    const dir = createFixture(t, files);
     mkdirSync(join(dir, "empty"));
     const init = spawnSync("git", ["init", "--quiet"], {
       cwd: dir,
       encoding: "utf8",
     });
-    assert.equal(init.status, 0, init.stderr);
-    const result = run(dir, [input]);
-    assert.equal(result.status, c.fails ? 1 : 0, result.stdout + result.stderr);
-    const data = JSON.parse(result.stdout);
-    assert.equal(data.yamlErrors.length, 0);
+    assert.ifError(init.error);
+    assert.equal(init.signal, null, init.stdout + init.stderr);
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    const result = checkLinks(dir, [input]);
+    assert.equal(result.status, directoryCase.fails ? 1 : 0, result.output);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.yamlErrors.length, 0);
     assert.ok(
-      data.result.links.some(
-        (l) => l.url === "https://example.invalid/" && l.state === "SKIPPED",
+      report.result.links.some(
+        (link) =>
+          link.url === "https://example.invalid/" && link.state === "SKIPPED",
       ),
     );
     // Successful same-document fragments need no separate Linkinator result.
-    if (c.target !== "#source") {
+    if (directoryCase.target !== "#source") {
       assert.ok(
-        data.result.links.some((l) => l.displayText === "directory case"),
+        report.result.links.some(
+          (link) => link.displayText === "directory case",
+        ),
       );
     }
     for (const [name, content] of Object.entries(files)) {
@@ -237,7 +258,9 @@ for (const c of directoryCases) {
   });
 }
 test("directory contract: outside-root directory cannot be served", (t) => {
-  const parent = fixture(t, { "outside/index.html": "<h1>Outside</h1>\n" });
+  const parent = createFixture(t, {
+    "outside/index.html": "<h1>Outside</h1>\n",
+  });
   const dir = join(parent, "repo");
   mkdirSync(dir);
   // WHATWG URL resolution clamps literal .. at the URL root. Encoded slashes
@@ -245,10 +268,12 @@ test("directory contract: outside-root directory cannot be served", (t) => {
   for (const target of ["../outside/", "..%2Foutside/"]) {
     const source = `# Source\n\n[outside](${target})\n`;
     writeFileSync(join(dir, "source.md"), source);
-    const result = run(dir, ["source.md"]);
-    assert.equal(result.status, 1, result.stdout + result.stderr);
+    const result = checkLinks(dir, ["source.md"]);
+    assert.equal(result.status, 1, result.output);
     assert.ok(
-      JSON.parse(result.stdout).result.links.some((l) => l.state === "BROKEN"),
+      JSON.parse(result.stdout).result.links.some(
+        (link) => link.state === "BROKEN",
+      ),
     );
     assert.equal(readFileSync(join(dir, "source.md"), "utf8"), source);
     assert.equal(
@@ -258,22 +283,19 @@ test("directory contract: outside-root directory cannot be served", (t) => {
   }
 });
 test("native directory control: default rejects, directory listing accepts", (t) => {
-  const dir = fixture(t, {
+  const dir = createFixture(t, {
     "source.md": "[docs](docs)\n",
     "docs/keep.txt": "keep\n",
   });
   for (const enabled of [false, true]) {
-    const result = spawnSync(
-      process.execPath,
-      [
-        join(root, "tests/link-validation/native-control.mjs"),
-        ...(enabled ? ["--directory-listing"] : []),
-      ],
-      { cwd: dir, encoding: "utf8", timeout: 30000 },
+    const result = runNode(dir, [
+      join(root, "tests/link-validation/native-control.mjs"),
+      ...(enabled ? ["--directory-listing"] : []),
+    ]);
+    assert.equal(result.status, enabled ? 0 : 1, result.output);
+    const link = JSON.parse(result.stdout).links.find(
+      (link) => link.url === "docs",
     );
-    assert.ifError(result.error);
-    assert.equal(result.status, enabled ? 0 : 1, result.stdout + result.stderr);
-    const link = JSON.parse(result.stdout).links.find((l) => l.url === "docs");
     assert.equal(link.status, enabled ? 200 : 404);
     assert.equal(link.state, enabled ? "OK" : "BROKEN");
   }
@@ -282,53 +304,73 @@ test("native directory control: default rejects, directory listing accepts", (t)
 // These are literal argv values, not shell patterns. Unsupported selections
 // must fail closed; successful literal-file support remains an upstream concern.
 const requestedPathCases = [
-  { name: "ordinary.md", valid: 0, broken: 1 },
-  { name: "nested/deeper/new.md", valid: 0, broken: 1 },
-  { name: "with space.md", valid: 0, broken: 1 },
-  { name: "!bang.md", valid: 0, broken: 1 },
-  { name: "choice{a,b}.md", decoy: "choicea.md", valid: 2, broken: 2 },
-  { name: "meta[ab].md", decoy: "metaa.md", valid: 2, broken: 2 },
-  { name: "plus+(a).md", decoy: "plusa.md", valid: 2, broken: 2 },
-  { name: "#hash.md", valid: 2, broken: 2 },
-  { name: "percent%23.md", valid: 1, broken: 1 },
+  { name: "ordinary.md", validStatus: 0, brokenStatus: 1 },
+  { name: "nested/deeper/new.md", validStatus: 0, brokenStatus: 1 },
+  { name: "with space.md", validStatus: 0, brokenStatus: 1 },
+  { name: "!bang.md", validStatus: 0, brokenStatus: 1 },
+  {
+    name: "choice{a,b}.md",
+    decoy: "choicea.md",
+    validStatus: 2,
+    brokenStatus: 2,
+  },
+  { name: "meta[ab].md", decoy: "metaa.md", validStatus: 2, brokenStatus: 2 },
+  { name: "plus+(a).md", decoy: "plusa.md", validStatus: 2, brokenStatus: 2 },
+  { name: "#hash.md", validStatus: 2, brokenStatus: 2 },
+  { name: "percent%23.md", validStatus: 1, brokenStatus: 1 },
   // Windows forbids these characters in filenames, not the other matrix cases.
   ...(process.platform === "win32"
     ? []
     : [
-        { name: "star*.md", decoy: "star-decoy.md", valid: 2, broken: 1 },
-        { name: "question?.md", decoy: "questionx.md", valid: 1, broken: 1 },
-        { name: "at@(a|b).md", decoy: "ata.md", valid: 2, broken: 2 },
+        {
+          name: "star*.md",
+          decoy: "star-decoy.md",
+          validStatus: 2,
+          brokenStatus: 1,
+        },
+        {
+          name: "question?.md",
+          decoy: "questionx.md",
+          validStatus: 1,
+          brokenStatus: 1,
+        },
+        {
+          name: "at@(a|b).md",
+          decoy: "ata.md",
+          validStatus: 2,
+          brokenStatus: 2,
+        },
       ]),
 ];
 for (const entry of requestedPathCases) {
   test(`requested-file attestation: ${entry.name}`, (t) => {
     const files = { [entry.name]: "# Source\n" };
     if (entry.decoy) files[entry.decoy] = "# Decoy\n";
-    const dir = fixture(t, files);
+    const dir = createFixture(t, files);
     for (const broken of [false, true]) {
       const content = "# Source\n" + (broken ? "\n[missing](absent.md)\n" : "");
       writeFileSync(join(dir, entry.name), content);
-      const result = run(dir, [entry.name]);
+      const result = checkLinks(dir, [entry.name]);
       assert.equal(
         result.status,
-        broken ? entry.broken : entry.valid,
-        result.stdout + result.stderr,
+        broken ? entry.brokenStatus : entry.validStatus,
+        result.output,
       );
       if (result.status === 2) {
         assert.match(result.stderr, /Requested-file attestation failed/);
         assert.ok(result.stderr.includes(entry.name), result.stderr);
         assert.equal(result.stdout, "");
       } else if (result.status === 0) {
-        const data = JSON.parse(result.stdout);
+        const report = JSON.parse(result.stdout);
         assert.deepEqual(
-          data.result.links.map((link) => decodeURIComponent(link.url)),
+          report.result.links.map((link) => decodeURIComponent(link.url)),
           [entry.name],
         );
       }
       assert.equal(readFileSync(join(dir, entry.name), "utf8"), content);
     }
     rmSync(join(dir, entry.name));
-    const missing = run(dir, [entry.name]);
+    const missing = checkLinks(dir, [entry.name]);
     assert.equal(missing.status, 2, missing.stdout + missing.stderr);
     assert.match(missing.stderr, /Requested-file attestation failed/);
     assert.ok(missing.stderr.includes(entry.name), missing.stderr);
@@ -336,7 +378,7 @@ for (const entry of requestedPathCases) {
 }
 
 test("requested-file attestation: batches, duplicate inputs and linked targets", (t) => {
-  const dir = fixture(t, {
+  const dir = createFixture(t, {
     "first.md":
       "# First\n\n[target](target.md#target)\n[redirect](docs)\n[external](https://example.invalid/)\n",
     "second.md": "# Second\n",
@@ -351,8 +393,8 @@ test("requested-file attestation: batches, duplicate inputs and linked targets",
     ["second.md", "first.md"],
     ["first.md", "./first.md"],
   ]) {
-    const result = run(dir, paths);
-    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const result = checkLinks(dir, paths);
+    assert.equal(result.status, 0, result.output);
     const links = JSON.parse(result.stdout).result.links;
     assert.ok(
       links.some((link) => link.url === "target.md" && link.state === "OK"),
@@ -365,8 +407,8 @@ test("requested-file attestation: batches, duplicate inputs and linked targets",
     );
   }
   for (const name of ["choice{a,b}.md", "#hash.md"]) {
-    const result = run(dir, ["second.md", name]);
-    assert.equal(result.status, 2, result.stdout + result.stderr);
+    const result = checkLinks(dir, ["second.md", name]);
+    assert.equal(result.status, 2, result.output);
     assert.match(result.stderr, /Requested-file attestation failed/);
     assert.ok(result.stderr.includes(name), result.stderr);
   }
@@ -377,12 +419,12 @@ test("requested-file attestation: URL decoding cannot substitute a sibling", (t)
     ["percent%23.md", "percent#.md"],
     ["percent%2Fname.md", "percent/name.md"],
   ]) {
-    const dir = fixture(t, {
+    const dir = createFixture(t, {
       [requested]: "# Source\n\n[missing](absent.md)\n",
       [decoy]: "# Decoy\n",
     });
-    const result = run(dir, [requested]);
-    assert.equal(result.status, 2, result.stdout + result.stderr);
+    const result = checkLinks(dir, [requested]);
+    assert.equal(result.status, 2, result.output);
     assert.match(result.stderr, /Requested-file attestation failed/);
     assert.ok(result.stderr.includes(requested), result.stderr);
     assert.equal(result.stdout, "");
