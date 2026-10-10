@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0] - 2026-10-12
+## [2.0.0] - 2026-10-10
 
 _Known dependency advisories, including a high-severity `braces` advisory, remain under bounded, repository-specific risk acceptance in [#62](https://github.com/jamesreimer/repo-template/issues/62) and [#64](https://github.com/jamesreimer/repo-template/issues/64); the filename mitigation below does not patch dependencies or establish a clean npm audit._
 
