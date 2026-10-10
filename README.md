@@ -48,8 +48,101 @@ language, directory layout, deployment system, or organizational governance.
    relationships; repository-wide auto-close configuration is not the normal
    mechanism. This guidance does not require Agent Workflows.
 
+8. Complete the [consumer specialization audit](#consumer-specialization-audit)
+   before declaring initialization complete or handing off implementation.
+
 The template is released under [CC0](LICENSE). Choose the appropriate license
 for your project's own content deliberately.
+
+### Consumer specialization audit
+
+This one-time completion audit verifies that the startup instructions were
+applied across the inherited repository. Reading them alone does not establish
+completion. Keep this procedure available while replacing the README and
+specializing the repository. For example, retrieve the inherited README with
+`git show '<initial-commit>:README.md'` if it was recorded in that commit;
+otherwise keep a temporary copy outside the repository until the audit is
+complete. No permanent copy is required. Resolve onboarding-only guidance and
+links, including the audit link in `AGENTS.md`, before handoff. Consumers own
+their copies: no continuing synchronization with upstream is required.
+
+1. Establish the scope from the inherited files and the intended final tree.
+   From the repository root, use `git ls-files` to inventory tracked content,
+   including nested and hidden files. Use
+   `git ls-files --others --exclude-standard` to identify untracked additions;
+   stage intended new files before searching. Account separately for any
+   deliberately ignored inherited content with
+   `git ls-files --others --ignored --exclude-standard --directory`. This lists
+   ignored untracked paths, collapsing wholly untracked directories; inspect
+   relevant directory contents separately. Exclude local installs
+   and generated material deliberately, rather than assuming hidden or ignored
+   files are irrelevant.
+2. Review the inherited files for the following responsibilities, even where
+   the searches below find nothing:
+   - Project identity and README purpose/usage, headings, badges, links, examples,
+     and repository/package names.
+   - License selection, security reporting, contribution, maintenance, and
+     release guidance.
+   - Agent authority and the governing standards actually adopted by the project.
+   - Inherited changelog history and the project's own historical evidence needs.
+   - Checks, dependencies, ignore patterns, and their suitability for the project.
+   - Nested documentation, including `rulesets/README.md` if inherited, and all
+     other inherited files containing template-specific identity or assumptions.
+   - Live repository permissions, branch protection, and other host settings
+     on which inherited documentation depends, such as private vulnerability
+     reporting, where applicable to the consumer's hosting model and inherited
+     responsibilities. Record verification or outstanding work, since local
+     files do not prove host configuration.
+
+   Adapt, deliberately retain, or remove files according to the consumer's
+   needs. Preserve reusable guidance that still applies. These are review
+   responsibilities, not a mandatory file inventory or application layout.
+
+3. Search repository-wide for potentially stale identity and instructions.
+   Run these commands from the root against the final working tree after staging
+   intended additions:
+
+   ```sh
+   git grep -n -I -i -F \
+     -e 'repo-template' -e 'jamesreimer/repo-template' \
+     -e 'Repository Template' -e 'repo-template-validation' -- .
+   git grep -n -I -i -E \
+     -e 'https?://|shields[.]io|badge|template|consumer|replace|adapt|example|OWNER/REPOSITORY' -- .
+   ```
+
+   Git searches tracked working-tree content, including nested files, dotfiles,
+   and tracked files matching ignore patterns. The first search covers known
+   inherited identities; the second surfaces repository URLs, badges, explicit
+   consumer-replacement instructions, examples, and assumptions for review.
+   Extend the terms with identities, URLs, placeholders, and wording discovered
+   in the inherited files. Exit status 1 means no matches, not proof of completion;
+   resolve search errors before relying on results.
+
+   Results are candidates, not automatic defects. Broad terms also match valid
+   project guidance and dependencies. Dependency metadata and registry URLs can
+   produce substantial irrelevant matches; distinguish inherited project identity
+   from ordinary dependency records. Searches can miss different wording,
+   split or constructed URLs, binary content (`-I` skips it), untracked/ignored
+   additions not staged, and content inside submodules. Review inherited
+   non-text content and any submodule contents separately where in scope;
+   file review supplies the semantic coverage that literal searches cannot.
+
+4. Review every remaining template-specific occurrence and classify it as
+   intentionally retained, with a reason, or requiring correction. Correct
+   stale identity and guidance, then rerun the searches and review the final
+   diff. Do not use indiscriminate search-and-replace. For example, a deliberate
+   attribution linking to `jamesreimer/repo-template` may remain as provenance;
+   a release command targeting that repository needs correction in a consumer.
+   Resolve required corrections before declaring specialization complete.
+5. Run the consumer's applicable validation and include completion evidence in
+   the normal implementation handoff: the scope of inherited files reviewed;
+   search commands and terms; remaining template-specific references with their
+   locations and dispositions; material decisions or omissions (including any
+   outstanding host configuration); validation results and limitations; and
+   explicit confirmation that nested documentation was included. Identify
+   unresolved work without claiming it complete. No new permanent specialization
+   report is required, and passing ordinary checks alone does not establish
+   specialization completeness.
 
 ## Run checks
 

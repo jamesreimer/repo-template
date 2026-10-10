@@ -24,6 +24,10 @@ presence of an old rule is not itself a reason to request permission again.
 ## Working practices
 
 - Inspect the branch and worktree; preserve unrelated work.
+- When initializing a consumer repository, complete the README's
+  [consumer specialization audit](README.md#consumer-specialization-audit)
+  before declaring specialization complete or handing off implementation, and
+  include its completion evidence in the normal handoff.
 - Keep changes within the user's authorized scope. Do not infer permission to
   deploy, merge, or modify sibling repositories from permission to edit here.
 - For substantive changes, identify the requirement, affected responsibilities,
