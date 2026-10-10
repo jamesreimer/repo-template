@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.0.0] - 2026-10-12
+
+_Known dependency advisories, including a high-severity `braces` advisory, remain under bounded, repository-specific risk acceptance in [#62](https://github.com/jamesreimer/repo-template/issues/62) and [#64](https://github.com/jamesreimer/repo-template/issues/64); the filename mitigation below does not patch dependencies or establish a clean npm audit._
+
+### Changed
+
+- **Breaking:** Require exactly Node.js 24.18.1 instead of `>=22.19.0`, install Markdown validation from the root npm lockfile with `npm ci --ignore-scripts`, and carry `.npmrc` with `engine-strict=true` so a Node engine mismatch fails installation instead of only warning; retain pre-commit orchestration, but replace its separate Markdown Node environment with install-time engine enforcement and subsequent execution through system `node` on PATH ([`083a106`](https://github.com/jamesreimer/repo-template/commit/083a10635c62e8544a0054f39661081fc6f7ef8d), [#75](https://github.com/jamesreimer/repo-template/pull/75))
+- Clarify same-PR changelog preparation, durable references across merge methods, and reviewed corrections when the intended UTC publication date changes, while preserving release-delta verification and separate publication authorization ([`7525159`](https://github.com/jamesreimer/repo-template/commit/75251599d49baa89f8f9b2bdf2347b4c8682c903), [#58](https://github.com/jamesreimer/repo-template/pull/58))
+- Choose GitHub issue-closing relationships according to substantive completion, distinguishing material post-merge obligations from routine housekeeping ([`1689599`](https://github.com/jamesreimer/repo-template/commit/16895990a2139747bba0d8a6622948e61b93e381), [#54](https://github.com/jamesreimer/repo-template/pull/54))
+
+### Added
+
+- **Breaking:** Add ESLint correctness checks and check-only Prettier formatting for JavaScript, JSON/JSONC, YAML, and Markdown, rejecting previously accepted files; adopt the dependencies and configuration together, review explicit formatting exclusions, and preserve Markdown prose wrapping and embedded examples ([`eb56488`](https://github.com/jamesreimer/repo-template/commit/eb56488ce1adc54ab7c51ac05d9cc67c4463b87a), [#76](https://github.com/jamesreimer/repo-template/pull/76))
+- Require a repository-wide consumer specialization audit and completion evidence in the initialization handoff, including nested documentation and applicable live host settings; keep the procedure accessible while replacing the inherited README, without requiring a permanent report or ongoing upstream synchronization ([`4b91cc8`](https://github.com/jamesreimer/repo-template/commit/4b91cc8f79caf0d3eaba714d731604faee786735), [#78](https://github.com/jamesreimer/repo-template/pull/78))
+
+### Removed
+
+- **Breaking:** Remove Ruff Python linting and formatting, including Python code-block formatting, TOML syntax checking, and Python source/cache ignore defaults; retain Python for pre-commit and require consumers needing Python or TOML validation to select their own tooling ([`52dda02`](https://github.com/jamesreimer/repo-template/commit/52dda025a5bcd115eec9cfce274f1b6882ded167), [#67](https://github.com/jamesreimer/repo-template/pull/67))
+
+### Fixed
+
+- **Breaking:** Fail local-link validation when Linkinator cannot attest that the exact requested Markdown files were scanned, preventing glob or URL interpretation from producing false-green results; retain fail-closed limitations for some legal filenames documented in [#70](https://github.com/jamesreimer/repo-template/issues/70) ([`e58492c`](https://github.com/jamesreimer/repo-template/commit/e58492cd515091d38e2c47652eac98e78c497866), [#71](https://github.com/jamesreimer/repo-template/pull/71))
+- Pass pre-commit Markdown filenames literally to Markdownlint so glob-like names are linted without filename-driven brace expansion; adopt the hook and adapter together, and assess manually supplied or configured globs separately ([`cf97424`](https://github.com/jamesreimer/repo-template/commit/cf974244a9e1c288b29d5d0444a14e5a5349cfc1), [#60](https://github.com/jamesreimer/repo-template/pull/60))
+
 ## [1.3.0] - 2026-09-29
 
 ### Added
@@ -44,6 +68,7 @@
 
 _First stable adoption baseline._
 
+[2.0.0]: https://github.com/jamesreimer/repo-template/releases/tag/v2.0.0
 [1.3.0]: https://github.com/jamesreimer/repo-template/releases/tag/v1.3.0
 [1.2.1]: https://github.com/jamesreimer/repo-template/releases/tag/v1.2.1
 [1.2.0]: https://github.com/jamesreimer/repo-template/releases/tag/v1.2.0
