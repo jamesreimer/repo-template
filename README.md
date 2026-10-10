@@ -59,9 +59,12 @@ for your project's own content deliberately.
 This one-time completion audit verifies that the startup instructions were
 applied across the inherited repository. Reading them alone does not establish
 completion. Keep this procedure available while replacing the README and
-specializing the repository; resolve onboarding-only guidance and links,
-including the audit link in `AGENTS.md`, before handoff. Consumers own their
-copies: no continuing synchronization with upstream is required.
+specializing the repository. For example, retrieve the inherited README with
+`git show '<initial-commit>:README.md'` if it was recorded in that commit;
+otherwise keep a temporary copy outside the repository until the audit is
+complete. No permanent copy is required. Resolve onboarding-only guidance and
+links, including the audit link in `AGENTS.md`, before handoff. Consumers own
+their copies: no continuing synchronization with upstream is required.
 
 1. Establish the scope from the inherited files and the intended final tree.
    From the repository root, use `git ls-files` to inventory tracked content,
@@ -69,7 +72,9 @@ copies: no continuing synchronization with upstream is required.
    `git ls-files --others --exclude-standard` to identify untracked additions;
    stage intended new files before searching. Account separately for any
    deliberately ignored inherited content with
-   `git ls-files --others --ignored --exclude-standard`. Exclude local installs
+   `git ls-files --others --ignored --exclude-standard --directory`. This lists
+   ignored untracked paths, collapsing wholly untracked directories; inspect
+   relevant directory contents separately. Exclude local installs
    and generated material deliberately, rather than assuming hidden or ignored
    files are irrelevant.
 2. Review the inherited files for the following responsibilities, even where
@@ -83,9 +88,11 @@ copies: no continuing synchronization with upstream is required.
    - Checks, dependencies, ignore patterns, and their suitability for the project.
    - Nested documentation, including `rulesets/README.md` if inherited, and all
      other inherited files containing template-specific identity or assumptions.
-   - Live repository permissions and branch protection where applicable;
-     record verification or outstanding work, since local files do not prove
-     host configuration.
+   - Live repository permissions, branch protection, and other host settings
+     on which inherited documentation depends, such as private vulnerability
+     reporting, where applicable to the consumer's hosting model and inherited
+     responsibilities. Record verification or outstanding work, since local
+     files do not prove host configuration.
 
    Adapt, deliberately retain, or remove files according to the consumer's
    needs. Preserve reusable guidance that still applies. These are review
@@ -112,7 +119,9 @@ copies: no continuing synchronization with upstream is required.
    resolve search errors before relying on results.
 
    Results are candidates, not automatic defects. Broad terms also match valid
-   project guidance and dependencies. Searches can miss different wording,
+   project guidance and dependencies. Dependency metadata and registry URLs can
+   produce substantial irrelevant matches; distinguish inherited project identity
+   from ordinary dependency records. Searches can miss different wording,
    split or constructed URLs, binary content (`-I` skips it), untracked/ignored
    additions not staged, and content inside submodules. Review inherited
    non-text content and any submodule contents separately where in scope;
