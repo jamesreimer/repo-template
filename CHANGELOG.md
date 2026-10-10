@@ -2,11 +2,11 @@
 
 ## [2.0.0] - 2026-10-12
 
-_Known dependency advisories, including high-severity braces findings, remain under bounded, repository-specific risk acceptance in [#62](https://github.com/jamesreimer/repo-template/issues/62) and [#64](https://github.com/jamesreimer/repo-template/issues/64); the filename mitigation below does not patch dependencies or establish a clean npm audit._
+_Known dependency advisories, including a high-severity `braces` advisory, remain under bounded, repository-specific risk acceptance in [#62](https://github.com/jamesreimer/repo-template/issues/62) and [#64](https://github.com/jamesreimer/repo-template/issues/64); the filename mitigation below does not patch dependencies or establish a clean npm audit._
 
 ### Changed
 
-- **Breaking:** Require exactly Node.js 24.18.1 instead of `>=22.19.0` and install Markdown validation from the root npm lockfile with `npm ci --ignore-scripts` and carry `.npmrc` with `engine-strict=true`; retain pre-commit orchestration, but replace its separate Markdown Node environment with install-time engine enforcement and subsequent execution through system `node` on PATH ([`083a106`](https://github.com/jamesreimer/repo-template/commit/083a10635c62e8544a0054f39661081fc6f7ef8d), [#75](https://github.com/jamesreimer/repo-template/pull/75))
+- **Breaking:** Require exactly Node.js 24.18.1 instead of `>=22.19.0`, install Markdown validation from the root npm lockfile with `npm ci --ignore-scripts`, and carry `.npmrc` with `engine-strict=true` so a Node engine mismatch fails installation instead of only warning; retain pre-commit orchestration, but replace its separate Markdown Node environment with install-time engine enforcement and subsequent execution through system `node` on PATH ([`083a106`](https://github.com/jamesreimer/repo-template/commit/083a10635c62e8544a0054f39661081fc6f7ef8d), [#75](https://github.com/jamesreimer/repo-template/pull/75))
 - Clarify same-PR changelog preparation, durable references across merge methods, and reviewed corrections when the intended UTC publication date changes, while preserving release-delta verification and separate publication authorization ([`7525159`](https://github.com/jamesreimer/repo-template/commit/75251599d49baa89f8f9b2bdf2347b4c8682c903), [#58](https://github.com/jamesreimer/repo-template/pull/58))
 - Choose GitHub issue-closing relationships according to substantive completion, distinguishing material post-merge obligations from routine housekeeping ([`1689599`](https://github.com/jamesreimer/repo-template/commit/16895990a2139747bba0d8a6622948e61b93e381), [#54](https://github.com/jamesreimer/repo-template/pull/54))
 
