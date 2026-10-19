@@ -197,6 +197,13 @@ are editable defaults, not a claim that every flagged document is invalid
 Markdown. Both ATX (`#`) and Setext headings are supported; there is no required
 heading style, first heading, single-H1 rule, or prose line-length limit.
 
+Inline Markdownlint configuration comments, including rule exceptions, are
+intentionally disabled with `noInlineConfig: true`. This removes the Markdown
+comment configuration parsing route; it does not patch vulnerable dependencies
+or disable configuration-file discovery. Consumers relying on inline exceptions
+must deliberately adapt their authoring or configuration when adopting this
+baseline.
+
 One local authoring rule requires explicit closing code fences. Although
 CommonMark permits implicit closure, a forgotten closer can absorb intended
 prose and prevent its links from being checked. `fenced-code-closed` uses
