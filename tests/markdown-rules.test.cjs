@@ -15,6 +15,7 @@ const { createRequire } = require("node:module");
 const { tmpdir } = require("node:os");
 const { dirname, resolve, join } = require("node:path");
 const { test } = require("node:test");
+const { pathToFileURL } = require("node:url");
 
 // Exercise the real CLI, parser, and configuration from the same root npm
 // installation as the ordinary hook, independent of the caller's cwd.
@@ -197,16 +198,80 @@ function literalFixture(t) {
   return dir;
 }
 
-function lintLiteral(dir, names) {
+function lintLiteral(dir, names, nodeArgs = []) {
   const result = spawnSync(
     process.execPath,
-    [join(root, "tools/markdownlint-files.cjs"), ...names],
+    [...nodeArgs, join(root, "tools/markdownlint-files.cjs"), ...names],
     { cwd: dir, encoding: "utf8", timeout: 30000 },
   );
   const output = result.stdout + result.stderr;
   assert.equal(result.error, undefined, output);
   assert.equal(result.signal, null, output);
   return { ...result, output };
+}
+
+for (const directive of [
+  "markdownlint-disable MD018",
+  'markdownlint-configure-file {"MD018": false}',
+  "markdownlint-configure-file MD018 = false",
+]) {
+  test(`inline configuration is ignored: ${directive}`, (t) => {
+    const dir = literalFixture(t);
+    const name = "inline{a,b}.md";
+    const content = `<!-- ${directive} -->\n\n#Title\n`;
+    writeFileSync(join(dir, name), content);
+    writeFileSync(join(dir, "inlinea.md"), "#Decoy\n");
+
+    // Observe actual TOML parser calls without replacing its behavior. The
+    // enabled control below proves the probe and the small TOML fixture work.
+    const tomlUrl = pathToFileURL(cliRequire.resolve("smol-toml")).href;
+    const wrapper = `import { parse as parseOriginal } from ${JSON.stringify(tomlUrl)};
+export function parse(...args) {
+  console.error("TOML_PARSE_CALLED");
+  return parseOriginal(...args);
+}`;
+    const probe = join(dir, "probe.mjs");
+    writeFileSync(
+      probe,
+      `import { registerHooks } from "node:module";
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    return specifier === "smol-toml"
+      ? { url: ${JSON.stringify(`data:text/javascript,${encodeURIComponent(wrapper)}`)}, shortCircuit: true }
+      : nextResolve(specifier, context);
+  }
+});\n`,
+    );
+    const nodeArgs = ["--import", pathToFileURL(probe).href];
+    const result = lintLiteral(dir, [name], nodeArgs);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.stderr, /inline\{a,b\}\.md:3:1 error MD018\//);
+    assert.match(result.stdout, /Linting: 1 file\n/);
+    assert.doesNotMatch(result.output, /TOML_PARSE_CALLED|inlinea\.md/);
+    assert.equal(readFileSync(join(dir, name), "utf8"), content);
+
+    // A valid document still passes with ignored configuration comments.
+    writeFileSync(join(dir, name), content.replace("#Title", "# Title"));
+    const valid = lintLiteral(dir, [name], nodeArgs);
+    assert.equal(valid.status, 0, valid.output);
+    assert.doesNotMatch(valid.output, /TOML_PARSE_CALLED/);
+
+    // Counterfactual: the same installed CLI previously honored each directive.
+    writeFileSync(join(dir, name), content);
+    const localConfig = join(dir, ".markdownlint-cli2.jsonc");
+    const config = readFileSync(localConfig, "utf8");
+    assert.match(config, /"noInlineConfig": true/);
+    writeFileSync(
+      localConfig,
+      config.replace('"noInlineConfig": true', '"noInlineConfig": false'),
+    );
+    const enabled = lintLiteral(dir, [name], nodeArgs);
+    assert.equal(enabled.status, 0, enabled.output);
+    if (directive.endsWith("MD018 = false")) {
+      assert.match(enabled.stderr, /TOML_PARSE_CALLED/);
+    }
+    assert.equal(readFileSync(join(dir, name), "utf8"), content);
+  });
 }
 
 for (const name of literalNames) {

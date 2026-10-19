@@ -2,6 +2,7 @@
 // Linkinator owns local fragment validity; Markdownlint owns Markdown authoring
 // rules and does not independently validate fragments.
 {
+  "noInlineConfig": true,
   "customRules": ["./markdownlint-rules/fenced-code-closed.cjs"],
   "config": {
     "default": false,
