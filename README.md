@@ -3,7 +3,7 @@
 [![Repository validation](https://github.com/jamesreimer/repo-template/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/jamesreimer/repo-template/actions/workflows/validate.yml?query=branch%3Amain)
 [![Latest release](https://img.shields.io/github/v/release/jamesreimer/repo-template)](https://github.com/jamesreimer/repo-template/releases/latest)
 [![License: CC0](https://img.shields.io/badge/license-CC0-blue)](LICENSE)
-[![Node.js: 24.18.1](https://img.shields.io/badge/Node.js-24.18.1-green)](#run-checks)
+[![Node.js: >=24.22.1 <25](https://img.shields.io/badge/Node.js-%3E%3D24.22.1%20%3C25-green)](#run-checks)
 [![Python: >=3.10](https://img.shields.io/badge/Python-%3E%3D3.10-blue)](#run-checks)
 
 A reusable starting point for Git repositories, with contributor guidance and
@@ -146,7 +146,10 @@ their copies: no continuing synchronization with upstream is required.
 
 ## Run checks
 
-Install Python 3.10 or later to run pre-commit and Node.js 24.18.1 (including npm).
+Install Python 3.10 or later to run pre-commit and Node.js 24.22.1 or a later
+Node 24 release (including npm). CI validates with exactly Node.js 24.22.1.
+These requirements apply to repository development tooling; consumers choose
+their own application runtime.
 The template maintains no Python source. Consumers introducing Python source
 should choose and configure their own Python tooling. Then:
 
