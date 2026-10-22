@@ -164,8 +164,11 @@ Use `npm ci --ignore-scripts` locally and in CI. The lock preserves the full dep
 pre-commit `additional_dependencies` cannot provide that transitive lock.
 The startup probe is still required: correctness must not depend on hoisting.
 Update pins and lock together, then run the regression suite and ordinary checks.
-The package engine and `.npmrc` enforce exactly Node 24.18.1 at install time.
-CI also selects that exact runtime. Later local execution uses the system `node`
+The package engine and `.npmrc` enforce Node >=24.22.1 <25 at install time,
+allowing later compatible Node 24 patches. CI pins exactly Node 24.22.1.
+This development-tooling baseline replaces the released v2 baseline's exact
+24.18.1 requirement; consumers must update older tooling runtimes when adopting it.
+Later local execution uses the system `node`
 on PATH; switching Node after installation is not guarded on each invocation.
 This accepted install-time enforcement replaces the Markdown hook's previous
 per-invocation nodeenv runtime selection.
