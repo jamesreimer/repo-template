@@ -210,6 +210,30 @@ function lintLiteral(dir, names, nodeArgs = []) {
   return { ...result, output };
 }
 
+test("supported custom frontMatter preserves heading validation", (t) => {
+  const dir = literalFixture(t);
+  const localConfig = join(dir, ".markdownlint-cli2.jsonc");
+  const parseJsonc = cliRequire("markdownlint-cli2/parsers/jsonc").default;
+  const config = parseJsonc(readFileSync(localConfig, "utf8"));
+  // A custom opener and an apparent heading defect inside the metadata prove
+  // that the supplied expression is used, rather than the default front matter.
+  config.frontMatter = "^---custom\\n[\\s\\S]*?\\n---(?:\\n|$)";
+  writeFileSync(localConfig, JSON.stringify(config));
+  const name = "frontmatter.md";
+  for (const valid of [true, false]) {
+    const content = `---custom\n#Metadata\n---\n\n${valid ? "# Title" : "#Title"}\n`;
+    writeFileSync(join(dir, name), content);
+    const result = lintLiteral(dir, [name]);
+    assert.equal(result.status, valid ? 0 : 1, result.output);
+    assert.match(result.stdout, /Linting: 1 file\n/);
+    if (!valid) {
+      assert.match(result.stderr, /frontmatter\.md:5:1 error MD018\//);
+      assert.match(result.stdout, /Summary: 1 issue in 1 file\n/);
+    }
+    assert.equal(readFileSync(join(dir, name), "utf8"), content);
+  }
+});
+
 for (const directive of [
   "markdownlint-disable MD018",
   'markdownlint-configure-file {"MD018": false}',

@@ -200,6 +200,15 @@ are editable defaults, not a claim that every flagged document is invalid
 Markdown. Both ATX (`#`) and Setext headings are supported; there is no required
 heading style, first heading, single-H1 rule, or prose line-length limit.
 
+Markdownlint CLI2 0.24.0 (markdownlint 0.42.0) uses RE2JS for `frontMatter`
+expressions as part of its regular-expression denial-of-service protection.
+This deliberately narrows the previously supported JavaScript `RegExp` surface:
+some features, including lookahead, are unsupported, even where older upstream
+documentation still describes a JavaScript `RegExp`. Consumers with custom
+`frontMatter` expressions must verify them and convert unsupported expressions
+to supported equivalents before adopting this version. The root defaults do
+not configure custom `frontMatter` and are unaffected by this narrowing.
+
 Inline Markdownlint configuration comments, including rule exceptions, are
 intentionally disabled with `noInlineConfig: true`. This removes the Markdown
 comment configuration parsing route; it does not patch vulnerable dependencies
