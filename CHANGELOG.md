@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.0] - 2026-10-25
+
+_KaTeX 0.16.47 retains the low-severity [GHSA-238p-pmpm-9mq7](https://github.com/advisories/GHSA-238p-pmpm-9mq7) finding, tracked in [#64](https://github.com/jamesreimer/repo-template/issues/64); this is not a clean npm audit. The [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) was withdrawn, not patched: braces 3.0.3 remains installed, with the changed-evidence disposition recorded in [#62](https://github.com/jamesreimer/repo-template/issues/62)._
+
+### Changed
+
+- **Breaking:** Require Node.js `>=24.22.1 <25` for repository development tooling instead of exactly 24.18.1, retaining strict install-time engine enforcement and pinning CI to 24.22.1; update older tooling runtimes when adopting, independently of the consumer application's runtime ([`6f65136`](https://github.com/jamesreimer/repo-template/commit/6f65136c3e4b15e812c30946ea9a5d5edd216957), [#86](https://github.com/jamesreimer/repo-template/pull/86))
+- **Breaking:** Disable inline Markdownlint configuration comments, including rule exceptions, with `noInlineConfig: true`; adapt authoring or configuration deliberately, and retain native configuration-file discovery and literal-filename validation ([`8fc4450`](https://github.com/jamesreimer/repo-template/commit/8fc445054a7f8dedc06ff2a7623e07434fe338ce), [#85](https://github.com/jamesreimer/repo-template/pull/85))
+- **Breaking:** Adopt Markdownlint CLI2 0.24.0 and markdownlint 0.42.0 with RE2JS denial-of-service protection, narrowing custom `frontMatter` expressions from the previous JavaScript RegExp surface; verify and convert unsupported constructs such as lookahead before adoption, while root defaults remain unaffected ([`6f65136`](https://github.com/jamesreimer/repo-template/commit/6f65136c3e4b15e812c30946ea9a5d5edd216957), [#86](https://github.com/jamesreimer/repo-template/pull/86))
+- Update Marked to 18.1.0 within the existing Linkinator integration, preserving the tested hooked HTML and local-link behavior ([`e69e840`](https://github.com/jamesreimer/repo-template/commit/e69e84047bccd2b70d90ceca4b5be077f043812b), [#84](https://github.com/jamesreimer/repo-template/pull/84))
+
+### Fixed
+
+- Resolve Linkinator's supported Undici dependency to 8.12.3 to address EventSource memory exhaustion, SRI token handling, and excessive content-encoding denial of service; reconcile consumer lockfiles deliberately and rerun validation ([`dcd7c90`](https://github.com/jamesreimer/repo-template/commit/dcd7c902a7ad91a7a5491d09174b6581c0b679ec), [#87](https://github.com/jamesreimer/repo-template/pull/87))
+- Remediate supported markdown-it and smol-toml dependency findings through the Markdownlint CLI2 update and locked versions 15.0.3 and 1.9.1 respectively; preserve existing validation guards and reassess remaining findings separately ([`6f65136`](https://github.com/jamesreimer/repo-template/commit/6f65136c3e4b15e812c30946ea9a5d5edd216957), [#86](https://github.com/jamesreimer/repo-template/pull/86))
+
 ## [2.0.0] - 2026-10-10
 
 _Known dependency advisories, including a high-severity `braces` advisory, remain under bounded, repository-specific risk acceptance in [#62](https://github.com/jamesreimer/repo-template/issues/62) and [#64](https://github.com/jamesreimer/repo-template/issues/64); the filename mitigation below does not patch dependencies or establish a clean npm audit._
@@ -68,6 +84,7 @@ _Known dependency advisories, including a high-severity `braces` advisory, remai
 
 _First stable adoption baseline._
 
+[3.0.0]: https://github.com/jamesreimer/repo-template/releases/tag/v3.0.0
 [2.0.0]: https://github.com/jamesreimer/repo-template/releases/tag/v2.0.0
 [1.3.0]: https://github.com/jamesreimer/repo-template/releases/tag/v1.3.0
 [1.2.1]: https://github.com/jamesreimer/repo-template/releases/tag/v1.2.1
