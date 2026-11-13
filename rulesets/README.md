@@ -13,6 +13,43 @@ Zero required approvals does not waive a project's separately required review.
 Consumers own their host settings and may deliberately adapt this baseline to
 their actual requirements, preserving any additional local protections.
 
+## Related repository-level maintenance settings
+
+This ruleset does **not** manage repository-level merge switches. The reusable
+housekeeping default is to **automatically delete merged pull-request branches**
+(`delete_branch_on_merge: true`), with protected branch rules remaining intact.
+Verify this setting on the actual repository with:
+
+```sh
+gh api "repos/OWNER/REPOSITORY" \
+  --jq '{delete_branch_on_merge, allow_auto_merge, allow_squash_merge}'
+```
+
+The `allow_auto_merge` switch is **not** part of the required baseline.
+Enabling it only makes auto-merge available on a PR; it does not authorize or
+activate merging. In this baseline, a maintainer must explicitly authorize
+**each** dependency PR's merge; no bot or workflow activates auto-merge.
+A future bot-controlled path needs its own independently reviewed, exact-scope
+authorization and cannot bypass repository checks, source/publication authority
+or project-specific required reviews. In this baseline's ruleset, zero required
+GitHub approvals means an independent human review is **not technically
+enforced by branch protection**. Required CI and a maintainer merge action are
+the host-enforced gates; any applicable independent review is an additional
+project responsibility. Manual protected squash merge remains permitted.
+Preserve project-specific exceptions rather than overwriting settings.
+
+The template's [Dependabot configuration](../.github/dependabot.yml) checks
+GitHub Actions, pip and npm **weekly**. It groups minor/patch updates only for
+`actions/setup-node`, `actions/setup-python`, `eslint` and `@eslint/*`. Runtime parsers,
+Linkinator, Markdownlint, Prettier and security updates remain separately
+reviewable. Grouping updates does not make them safe to merge without the
+project's full checks and any required independent review.
+
+Repository-wide settings must be inspected and intentionally applied by an
+authorized maintainer. Template source files are not a host-settings
+synchronization service, and enabling automatic branch deletion does not delete
+old feature branches left from earlier squash merges.
+
 ## Before installation
 
 Copying this file or creating a repository from the template does not install
