@@ -3,12 +3,39 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Etc/UTC
+    groups:
+      setup-actions:
+        applies-to: version-updates
+        patterns:
+          - "actions/setup-node"
+          - "actions/setup-python"
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: pip
     directory: /
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Etc/UTC
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: monthly
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Etc/UTC
+    groups:
+      eslint-tooling:
+        applies-to: version-updates
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+        update-types:
+          - minor
+          - patch
